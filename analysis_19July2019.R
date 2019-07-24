@@ -93,7 +93,8 @@ fdata %>% group_by(Individual, Treatment) %>%
 ## Analsis of Cricket and Isopod Data from July 2019 -----
 
 
-IDtable = read_csv("Data/IDtable_22July2019.csv") %>% 
+IDtable = read_csv("Data/IDtable_22July2019.csv") %>%
+  filter(!(Individual =="K" & Species =="TRRA")) %>% # get rid of lost isopod
   rename(Start_0 = Start,End_0 = End, WWt = `Wet Weight (g)`) %>%
   gather(-Species:-Treatment, -WWt:-Year, key=Type, value=time) %>%
   separate(Type, into=c("Type", "Rep"), sep="_") %>%
@@ -116,6 +117,11 @@ respdata = read_csv("Data/19July2019_crickets.csv") %>%
     read_csv("Data/22July2019_isopod_fear.csv") %>% 
       select(Time:Flow) %>%
       mutate(Day = 22)
+  ) %>%
+  bind_rows(
+    read_csv("Data/isopod_fear_24July2019.csv") %>% 
+      select(Time:Flow) %>%
+      mutate(Day = 24)
   )
 
 
@@ -175,15 +181,16 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   left_join(sumfdata) %>%
   mutate(cv = resp_ratesd/resp_rate)
 
-
+png("Plot/Fear_results_24July2019.png", width=8, height=5, units="in", res=300)
 fdata %>% ungroup() %>% ggplot(aes(x=Treatment, y=resp_rate, color=Individual)) +
   geom_point(data = sumfdata, size=6, shape = 18) +
   geom_line(data = sumfdata, aes(group=Individual)) +
-  geom_jitter(aes(shape=Rep), alpha=0.7) + theme_classic() +
+  geom_jitter(aes(shape=Rep), alpha=0.8) + theme_classic() +
   facet_grid(.~Species) +
   scale_x_discrete(breaks=c("N", "C", "B"),
                    limits=c("N", "C", "B"),
                    labels=c("Nothing", "Cue", "Visual + Cue"))
+dev.off()
 
 library(nlme)
 cricketdf = sumfdata %>% filter(Species=="Cricket")

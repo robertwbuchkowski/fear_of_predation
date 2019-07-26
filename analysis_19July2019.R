@@ -122,6 +122,11 @@ respdata = read_csv("Data/19July2019_crickets.csv") %>%
     read_csv("Data/isopod_fear_24July2019.csv") %>% 
       select(Time:Flow) %>%
       mutate(Day = 24)
+  ) %>%
+  bind_rows(
+    read_csv("Data/lynx_fear_26July2019.csv") %>% 
+      select(Time:Flow) %>%
+      mutate(Day = 26)
   )
 
 
@@ -165,11 +170,11 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
 
 output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach)))
 
-blank = output %>% filter(!(Treatment %in% c("B", "C", "N"))) %>%
+blank = output %>% filter(!(Treatment %in% c("B", "C", "N", "N_mesh"))) %>%
   group_by(Day) %>%
   summarize(blank = mean(resprate))
 
-fdata = output %>% filter((Treatment %in% c("B", "C", "N"))) %>%
+fdata = output %>% filter((Treatment %in% c("B", "C", "N", "N_mesh"))) %>%
   left_join(blank) %>%
   mutate(resp_rate = resprate -blank)
 
@@ -181,15 +186,15 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   left_join(sumfdata) %>%
   mutate(cv = resp_ratesd/resp_rate)
 
-png("Plot/Fear_results_24July2019.png", width=8, height=5, units="in", res=300)
+png("Plot/Fear_results_26July2019.png", width=10, height=5, units="in", res=300)
 fdata %>% ungroup() %>% ggplot(aes(x=Treatment, y=resp_rate, color=Individual)) +
   geom_point(data = sumfdata, size=6, shape = 18) +
   geom_line(data = sumfdata, aes(group=Individual)) +
   geom_jitter(aes(shape=Rep), alpha=0.8) + theme_classic() +
-  facet_grid(.~Species) +
-  scale_x_discrete(breaks=c("N", "C", "B"),
-                   limits=c("N", "C", "B"),
-                   labels=c("Nothing", "Cue", "Visual + Cue"))
+  facet_wrap(.~Species, scales="free") +
+  scale_x_discrete(breaks=c("N","N_mesh", "C", "B"),
+                   limits=c("N","N_mesh", "C", "B"),
+                   labels=c("Nothing", "Nothing \n mesh", "Cue", "Visual + Cue"))
 dev.off()
 
 library(nlme)

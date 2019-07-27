@@ -124,7 +124,7 @@ respdata = read_csv("Data/19July2019_crickets.csv") %>%
       mutate(Day = 24)
   ) %>%
   bind_rows(
-    read_csv("Data/lynx_fear_26July2019.csv") %>% 
+    read_csv("Data/26July2019_spiders.csv") %>% 
       select(Time:Flow) %>%
       mutate(Day = 26)
   )
@@ -170,11 +170,11 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
 
 output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach)))
 
-blank = output %>% filter(!(Treatment %in% c("B", "C", "N", "N_mesh"))) %>%
+blank = output %>% filter(!(Treatment %in% c("B", "C", "N"))) %>%
   group_by(Day) %>%
   summarize(blank = mean(resprate))
 
-fdata = output %>% filter((Treatment %in% c("B", "C", "N", "N_mesh"))) %>%
+fdata = output %>% filter((Treatment %in% c("B", "C", "N"))) %>%
   left_join(blank) %>%
   mutate(resp_rate = resprate -blank)
 
@@ -188,22 +188,26 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
 
 png("Plot/Fear_results_26July2019.png", width=10, height=5, units="in", res=300)
 fdata %>% ungroup() %>% ggplot(aes(x=Treatment, y=resp_rate, color=Individual)) +
-  geom_point(data = sumfdata, size=6, shape = 18) +
+  geom_point(data = sumfdata, size=6, shape = 23) +
   geom_line(data = sumfdata, aes(group=Individual)) +
-  geom_jitter(aes(shape=Rep), alpha=0.8) + theme_classic() +
+  geom_jitter(aes(shape=Rep), alpha=0.8, width = 0.2, height= 0.2) + 
+  theme_classic() +
   facet_wrap(.~Species, scales="free") +
-  scale_x_discrete(breaks=c("N","N_mesh", "C", "B"),
-                   limits=c("N","N_mesh", "C", "B"),
-                   labels=c("Nothing", "Nothing \n mesh", "Cue", "Visual + Cue"))
+  scale_x_discrete(breaks=c("N", "C", "B"),
+                   limits=c("N", "C", "B"),
+                   labels=c("Nothing", "Cue", "Visual + Cue"))
 dev.off()
 
 library(nlme)
 cricketdf = sumfdata %>% filter(Species=="Cricket")
 TRRAdf = sumfdata %>% filter(Species=="TRRA")
+PHIDdf = sumfdata %>% filter(Species=="Phiddipus")
 
+PHIDdf$Treatment <- factor(PHIDdf$Treatment, levels=c("N","C","B"))
 
 cricketm1 = lme(resp_rate~Treatment, random=~1|Individual, data=cricketdf); summary(cricketm1)
 TRRAm1 = lme(resp_rate~Treatment, random=~1|Individual, data=TRRAdf); summary(TRRAm1)
+PHIDm1 = lme(resp_rate~Treatment, random=~1|Individual, data=PHIDdf); summary(PHIDm1)
 
 minID = fdata %>% group_by(Species, Individual) %>%
   summarize(Start = min(Start)) %>%

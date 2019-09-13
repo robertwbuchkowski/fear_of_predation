@@ -1,4 +1,4 @@
-Species,Individual,Treatment,Start_0,End_0,Start_1,End_1,Start_2,End_2,Wet Weight (g),Date,Pressure,Tube ID
+Species,Individual,Treatment,Start,End,Start,End,Start,End,Wet Weight (g),Date,Pressure,Tube ID
 Cricket,A,N,300,500,700,900,1050,1250,0.0441,19-Jul,29.81,
 Cricket,A,C,2200,2400,2550,2750,2950,3150,0.0441,19-Jul,29.81,
 Cricket,A,B,4400,4600,4750,4950,5100,5300,0.0441,19-Jul,29.81,

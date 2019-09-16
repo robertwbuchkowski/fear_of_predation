@@ -187,7 +187,7 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   left_join(sumfdata) %>%
   mutate(cv = resp_ratesd/resp_rate)
 
-png("Plot/Fear_results_26July2019.png", width=10, height=5, units="in", res=300)
+png("Fear_results_26July2019.png", width=10, height=5, units="in", res=300) # does not work
 fdata %>% ungroup() %>% ggplot(aes(x=Treatment, y=resp_rate, color=Individual)) +
   geom_point(data = sumfdata, size=6, shape = 23) +
   geom_line(data = sumfdata, aes(group=Individual)) +
@@ -381,32 +381,31 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
   Weight = as.numeric(IDTABLE[XX,"WWt"])
   WEIGHT = ifelse(is.na(Weight), 1, Weight)
   WEIGHT0 = ifelse(is.na(Weight), 0, Weight)
-  volume = ((vol-WEIGHT0)*((TEMP+273)/273)*760/PRESSURE)/1000
-  vol = 
-    if("Julian" < 19236) { 
-      60.79535394 
+  
+  if(IDTABLE$Julian[XX] < 19236) { 
+    vol = 60.79535394
+  } else {
+    if(IDTABLE$Julian[XX] > 19236) {
+      vol = 53.7489539
     } else {
-      if("Julian" > 19236) {
-        53.7489539 
+      if(IDTABLE$Julian[XX] == 19236 && IDTABLE$Species[XX] == "TRRA") {
+        vol = 60.79535394
       } else {
-        if("Julian" == 19236 && Species == "TRRA") {
-          60.79535394
-        } else {
-          if("Julian" == 19236 && Species == "Lynx") {
-            53.7489539 }
-        }
+        if(IDTABLE$Julian[XX] == 19236 && IDTABLE$Species[XX] == "Lynx") {
+          vol = 53.7489539 }
       }
     }
-  
+  }
+
+  volume = ((vol-WEIGHT0)*((TEMP+273)/273)*760/PRESSURE)/1000
   resprate = as.numeric(slope*volume*60/(WEIGHT))
   c(r2 = r2, resprate = resprate)
 }
 
-output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach))) # non-numeric argument to binary operator
 
+## Figure out how to account for the leak rate ----
 
-### TEST FUNCTION ----
-runeach_TEST = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){ 
+runeach_ADJ = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata) { 
   select = RESPDATA$Time > as.numeric(IDTABLE[XX,"Start"]) & 
     RESPDATA$Time < as.numeric(IDTABLE[XX,"End"]) &
     RESPDATA$Julian == as.numeric(IDTABLE[XX, "Julian"])
@@ -418,6 +417,12 @@ runeach_TEST = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
   m1 = lm(CO2 ~ Time, data=selected)
   slope = coefficients(m1)[2]
   r2 = summary(m1)$adj.r.squared
+  
+  IDTABLE$Species = as.character(IDTABLE[XX, "Species"])
+  if(IDTABLE$Species[XX] == "Blank") {
+    slope_blank = coefficients(lm(CO2 ~ Time, data=selected))[2]
+  }
+  
   TEMP=mean(selected$Temp)
   Weight = as.numeric(IDTABLE[XX,"WWt"])
   WEIGHT = ifelse(is.na(Weight), 1, Weight)
@@ -437,18 +442,17 @@ runeach_TEST = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
       }
     }
   }
-    
-
-    
-
+  
   volume = ((vol-WEIGHT0)*((TEMP+273)/273)*760/PRESSURE)/1000
-  resprate = as.numeric(slope*volume*60/(WEIGHT))
+  resprate = as.numeric((slope-slope_blank)*volume*60/(WEIGHT))
   c(r2 = r2, resprate = resprate)
 }
 
-output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach_TEST)))
 
-for(kk in 1:NN){
+
+output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach)))
+
+for(kk in 1:NN){ # diagnose errors by line
   aaaa = runeach_TEST(kk)
   print(kk)
 }
@@ -469,34 +473,43 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   left_join(sumfdata) %>%
   mutate(cv = resp_ratesd/resp_rate)
 
-png("Plot/Fear_results_13Sep2019.png", width=10, height=5, units="in", res=300)
-fdata %>% ungroup() %>% ggplot(aes(x=Treatment, y=resp_rate, color=Individual)) +
+dev.new()
+dev.off()
+
+fdata %>% ungroup() %>%
+  ggplot(aes(x=Treatment, y=resp_rate, color=Individual, shape = Species)) + 
   geom_point(data = sumfdata, size=6, shape = 23) +
   geom_line(data = sumfdata, aes(group=Individual)) +
   geom_jitter(aes(shape=Rep), alpha=0.8, width = 0.2, height= 0.2) + 
   theme_classic() +
-  facet_wrap(.~Species, scales="free") +
+  facet_wrap(.~Species, scales="free") + 
   scale_x_discrete(breaks=c("N", "C", "B"),
-                   limits=c("N", "C", "B"),
-                   labels=c("Nothing", "Cue", "Visual + Cue"))
-dev.off()
+                 limits=c("N", "C", "B"),
+                  labels=c("Nothing", "Cue", "Visual + Cue")) # Missing variable for facetting
+
+# ggsave(filename = "Fear_results_13Sep2019.png", plot = tmp,device = "png", width=10, height=5, units="in", dpi=300)
 
 library(nlme)
 cricketdf = sumfdata %>% filter(Species=="Cricket")
-TRRAdf = sumfdata %>% filter(Species=="TRRA")
+MEFEdf = sumfdata %>% filter(Species== "MEFE")
 PHIDdf = sumfdata %>% filter(Species=="Phiddipus")
 lynxdf = sumfdata %>% filter(Species=="Lynx")
-MEFEdf = sumfdata %>% filter(Species== "MEFE")
 ONASdf = sumfdata %>% filter(Species=="ONAS")
+TRRAdf = sumfdata %>% filter(Species=="TRRA")
 
-PHIDdf$Treatment <- factor(PHIDdf$Treatment, levels=c("N","C","B"))
+cricketdf$Treatment <- factor(cricketdf$Treatment, levels = c("N", "C", "B"))
+MEFEdf$Treatment <- factor(MEFEdf$Treatment, levels = c("N", "C", "B"))
+PHIDdf$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
+lynxdf$Treatment  <- factor(lynxdf$Treatment, levels = c("N", "C", "B"))
+ONASdf$Treatment <- factor(ONASdf$Treatment, levels = c("N", "C", "B"))
+TRRAdf$Treatment <- factor(TRRAdf$Treatment, levels = c("N", "C", "B"))
 
 cricketm1 = lme(resp_rate~Treatment, random=~1|Individual, data=cricketdf); summary(cricketm1)
-TRRAm1 = lme(resp_rate~Treatment, random=~1|Individual, data=TRRAdf); summary(TRRAm1)
+MEFEm1 = lme(resp_rate~Treatment, random=~1|Individual, data=MEFEdf); summary(MEFEm1)
 PHIDm1 = lme(resp_rate~Treatment, random=~1|Individual, data=PHIDdf); summary(PHIDm1)
 lynxm1 = lme(resp_rate~Treatment, random=~1|Individual, data=lynxdf); summary(lynxm1)
-MEFEm1 = lme(resp_rate~Treatment, random=~1|Individual, data=MEFEdf); summary(MEFEm1)
 ONASm1 = lme(resp_rate~Treatment, random=~1|Individual, data=ONASdf); summary(ONASm1)
+TRRAm1 = lme(resp_rate~Treatment, random=~1|Individual, data=TRRAdf); summary(TRRAm1)
 
 minID = fdata %>% group_by(Species, Individual) %>%
   summarize(Start = min(Start)) %>%

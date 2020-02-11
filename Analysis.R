@@ -1,6 +1,13 @@
 ### Acute Fear Summer 2019 Proj
 ### N.R. Sommer & R.W. Buchkowski
 
+# Andis has a min 10 obs per individual and removes observations in the lower quartile (ish) of R^2
+# He also does this because they assume they're taking a baseline "resting" respiration rate.
+# We should probably remove individuals that are obvious outliers, but correcting for R^2 would reduce the total number of observations down to one or two per individual. I would rather retain that variation than reduce the number of observations per individual.... 
+
+# Andis suggested going back and looking at the raw
+# CO2 ~ Time*Treatment + (Treatment | Individual)
+
 require(tidyverse)
 require(lubridate)
 
@@ -311,3 +318,4 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   facet_grid(.~Species)
 
 ggsave("Fear_results_Jan2020.png", plot = last_plot())
+

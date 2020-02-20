@@ -4,6 +4,7 @@
 require(tidyverse)
 require(lubridate)
 
+#### READ-IN DATA ####
 IDtable = read_csv("Data/IDtable_13Sep2019.csv") %>%
   filter(!(Individual =="K" & Species =="TRRA")) %>% # remove lost isopod
   filter(!(Individual =="B_remove" & Species =="Lynx")) %>% # remove lost lynx
@@ -144,6 +145,8 @@ respdata = respdata %>% select(-QO2, -FlowV, -Flow2)
 
 NN = dim(IDtable)[1]
 
+#### CALCULATE RESPIRATION RATES ####
+
 runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){ 
   select = RESPDATA$Time > as.numeric(IDTABLE[XX,"Start"]) & 
     RESPDATA$Time < as.numeric(IDTABLE[XX,"End"]) &
@@ -227,11 +230,13 @@ runeach_ADJ = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata) {
 
 output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach)))
 
-for(kk in 1:NN){ # diagnose errors by line
+# diagnose errors by line, if any
+for(kk in 1:NN){ 
   aaaa = runeach(kk)
   print(kk)
 }
 
+# corrected CO2 rate by blanks
 blank = output %>% filter(!(Treatment %in% c("B", "C", "N"))) %>%
   group_by(Julian) %>%
   summarize(blank = mean(resprate))
@@ -240,6 +245,7 @@ fdata = output %>% filter((Treatment %in% c("B", "C", "N"))) %>%
   left_join(blank) %>%
   mutate(resp_rate = resprate - blank)
 
+# get mean corrected CO2 (avg of 3 obs) 
 sumfdata = fdata %>% group_by(Species, Individual, Treatment) %>%
   summarize(resp_rate = mean(resp_rate))
 
@@ -251,6 +257,40 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
 dev.new()
 dev.off()
 
+### CLEANING ####
+
+ggplot(aes(x=Julian, y = blank), data=blank) + geom_point()
+# Blank for 19207 (26-Jul) is shockingly high. Not sure how to fix, other than to drop all data from that day. 
+
+# Check on Lynx N outlier point (resp_rate = -20)
+fdata %>% filter(Species == "Lynx") %>% View()
+fdata %>% filter(Species == "Lynx") %>% 
+  ggplot(aes(x=resp_rate, y = r2)) + geom_point()
+fdata %>% filter(Species == "Lynx") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point()
+fdata %>% filter(Species == "Lynx") %>% 
+  ggplot(aes(x=Individual, y = resp_rate)) + geom_boxplot()
+fdata %>% filter(resp_rate < -10)
+IDtable %>% filter(Species == "Lynx" & Individual == "N")
+respdata %>% filter(Julian == 19253 & Time > 22300 & Time < 26215) %>% 
+  ggplot(aes(x = Time, y = CO2)) + geom_point()
+respdata %>% filter(Julian == 19253 & Time < 25715 & Time > 25515) %>% 
+  ggplot(aes(x = Time, y = CO2)) + geom_point()
+respdata %>% filter(Julian == 19253 & Time < 26065 & Time > 25865) %>% 
+  ggplot(aes(x = Time, y = CO2)) + geom_point()
+# Start & End times are correct for Lynx N in treatment B
+# Start & End times are correct in the raw ID table for Lynx N, treatment B
+
+fdata %>% mutate(End-Start == 200) %>% View() # Check all Start & End times
+# Time incorrect only for ONAS T, treatment N. End is 41360, start is 41150. 
+
+
+### MIXED EFFECTS MODELS ####
+# to-do: use lm4 and bootstrap confidence values
+
+library(lme4) 
+
+# Filter data by species for mixed effects models 
 cricketdf = sumfdata %>% filter(Species=="Cricket")
 MEFEdf = sumfdata %>% filter(Species== "MEFE")
 PHIDdf = sumfdata %>% filter(Species=="Phiddipus")
@@ -264,8 +304,6 @@ PHIDdf$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
 lynxdf$Treatment  <- factor(lynxdf$Treatment, levels = c("N", "C", "B"))
 ONASdf$Treatment <- factor(ONASdf$Treatment, levels = c("N", "C", "B"))
 TRRAdf$Treatment <- factor(TRRAdf$Treatment, levels = c("N", "C", "B"))
-
-library(lme4) ## RETURN, use lm4 and bootstrap confidence values
 cricketm1 = lmer(resp_rate~Treatment + (1|Individual), data=cricketdf)
 summary(cricketm1)
 MEFEm1 = lmer(resp_rate~Treatment + (1|Individual), data = MEFEdf)
@@ -285,6 +323,9 @@ minID = fdata %>% group_by(Species, Individual) %>%
   summarize(Start = min(Start)) %>%
   rename(Start0 = Start)
 
+#### FIGURES ####
+# to-do: for final figure, overlay mean data points for each treatment
+
 fdata %>% group_by(Species, Individual, Treatment) %>%
   summarize(Start = min(Start)) %>%
   left_join(sumfdata) %>%
@@ -293,6 +334,7 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   ggplot(aes(x=Start, y=resp_rate, shape=Treatment)) + 
   geom_point(size=1) + geom_line(aes(group=Individual)) + theme_classic() +
   facet_grid(.~Species)
+
 
 fdata %>% group_by(Species, Individual, Treatment) %>%
   ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
@@ -311,5 +353,3 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   facet_grid(.~Species)
 
 ggsave("Fear_results_Jan2020.png", plot = last_plot())
-## Overlay mean data points
-

@@ -239,10 +239,11 @@ fdata %>% filter(Species == "TRRA") %>%
   ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
 
 ### MIXED EFFECTS MODELS ####
-# to-do: use lm4 and bootstrap confidence values 
+# to-do: use lme4 and bootstrap confidence values 
 # bootMER(), perhaps predictInterval() 
 
-library(lme4) 
+require(lme4)
+require(boot)
 
 # Filter data by species for mixed effects models 
 cricketdf = sumfdata %>% filter(Species=="Cricket")
@@ -260,9 +261,13 @@ ONASdf$Treatment <- factor(ONASdf$Treatment, levels = c("N", "C", "B"))
 TRRAdf$Treatment <- factor(TRRAdf$Treatment, levels = c("N", "C", "B"))
 
 # LME by species
+
 cricketm1 = lmer(resp_rate~Treatment + (1|Individual), data=cricketdf)
 plot(cricketm1)
 summary(cricketm1)
+# messing around with bootMer
+cricketm1_boot <- bootMer(x=cricketm1,FUN=fixef,nsim=200) 
+boot.ci(cricketm1_boot,type="perc",index=1)
 
 MEFEm1 = lmer(resp_rate~Treatment + (1|Individual), data = MEFEdf)
 plot(MEFEm1)

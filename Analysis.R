@@ -184,50 +184,6 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
   c(r2 = r2, resprate = resprate)
 }
 
-runeach_ADJ = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata) { 
-  select = RESPDATA$Time > as.numeric(IDTABLE[XX,"Start"]) & 
-    RESPDATA$Time < as.numeric(IDTABLE[XX,"End"]) &
-    RESPDATA$Julian == as.numeric(IDTABLE[XX, "Julian"])
-  
-  selected = RESPDATA[select,]
-  
-  PRESSURE = IDTABLE[XX,"Pressure"]*25.4
-  
-  m1 = lm(CO2 ~ Time, data=selected)
-  slope = coefficients(m1)[2]
-  r2 = summary(m1)$adj.r.squared
-  
-  IDTABLE$Species = as.character(IDTABLE[XX, "Species"])
-  if(IDTABLE$Species[XX] == "Blank") {
-    slope_blank = coefficients(lm(CO2 ~ Time, data=selected))[2]
-  }
-  
-  TEMP=mean(selected$Temp)
-  Weight = as.numeric(IDTABLE[XX,"WWt"])
-  WEIGHT = ifelse(is.na(Weight), 1, Weight)
-  WEIGHT0 = ifelse(is.na(Weight), 0, Weight)
-  
-  if(IDTABLE$Julian[XX] < 19236) { 
-    vol = 60.79535394
-  } else {
-    if(IDTABLE$Julian[XX] > 19236) {
-      vol = 53.7489539
-    } else {
-      if(IDTABLE$Julian[XX] == 19236 && IDTABLE$Species[XX] == "TRRA") {
-        vol = 60.79535394
-      } else {
-        if(IDTABLE$Julian[XX] == 19236 && IDTABLE$Species[XX] == "Lynx") {
-          vol = 53.7489539 }
-      }
-    }
-  }
-  
-  volume = ((vol-WEIGHT0)*((TEMP+273)/273)*760/PRESSURE)/1000
-  resprate = as.numeric((slope-slope_blank)*volume*60/(WEIGHT))
-  c(r2 = r2, resprate = resprate)
-}
-
-
 output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach)))
 
 # diagnose errors by line, if any
@@ -237,7 +193,7 @@ for(kk in 1:NN){
 }
 
 # corrected CO2 rate by blanks
-blank = output %>% filter(!(Treatment %in% c("B", "C", "N"))) %>%
+blank = output %>% filter(Individual=="Blank") %>%
   group_by(Julian) %>%
   summarize(blank = mean(resprate))
 
@@ -245,7 +201,7 @@ fdata = output %>% filter((Treatment %in% c("B", "C", "N"))) %>%
   left_join(blank) %>%
   mutate(resp_rate = resprate - blank)
 
-# get mean corrected CO2 (avg of 3 obs) 
+# get mean of corrected CO2 (avg of 3 obs) 
 sumfdata = fdata %>% group_by(Species, Individual, Treatment) %>%
   summarize(resp_rate = mean(resp_rate))
 
@@ -254,39 +210,37 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   left_join(sumfdata) %>%
   mutate(cv = resp_ratesd/resp_rate)
 
-dev.new()
-dev.off()
-
 ### CLEANING ####
 
-ggplot(aes(x=Julian, y = blank), data=blank) + geom_point()
-# Blank for 19207 (26-Jul) is shockingly high. Not sure how to fix, other than to drop all data from that day. 
+# Check blanks
+blank %>% ggplot(aes(x=Julian, y = blank)) + geom_point() # good
 
-# Check on Lynx N outlier point (resp_rate = -20)
-fdata %>% filter(Species == "Lynx") %>% View()
-fdata %>% filter(Species == "Lynx") %>% 
-  ggplot(aes(x=resp_rate, y = r2)) + geom_point()
-fdata %>% filter(Species == "Lynx") %>% 
-  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point()
-fdata %>% filter(Species == "Lynx") %>% 
-  ggplot(aes(x=Individual, y = resp_rate)) + geom_boxplot()
-fdata %>% filter(resp_rate < -10)
-IDtable %>% filter(Species == "Lynx" & Individual == "N")
-respdata %>% filter(Julian == 19253 & Time > 22300 & Time < 26215) %>% 
-  ggplot(aes(x = Time, y = CO2)) + geom_point()
-respdata %>% filter(Julian == 19253 & Time < 25715 & Time > 25515) %>% 
-  ggplot(aes(x = Time, y = CO2)) + geom_point()
-respdata %>% filter(Julian == 19253 & Time < 26065 & Time > 25865) %>% 
-  ggplot(aes(x = Time, y = CO2)) + geom_point()
-# Start & End times are correct for Lynx N in treatment B
-# Start & End times are correct in the raw ID table for Lynx N, treatment B
+# Check consistency of observation length 
+fdata %>% mutate(End-Start == 200) %>% View() 
+# Observation lenght incorrect only for ONAS T, treatment N. End is 41360, start is 41150. 
 
-fdata %>% mutate(End-Start == 200) %>% View() # Check all Start & End times
-# Time incorrect only for ONAS T, treatment N. End is 41360, start is 41150. 
+# Check R2 for resp rates
+fdata %>% filter(Species == "Cricket") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
 
+fdata %>% filter(Species == "Lynx") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # bad
+
+fdata %>% filter(Species == "MEFE") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
+
+fdata %>% filter(Species == "ONAS") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # outlier?
+
+fdata %>% filter(Species == "Phiddipus") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # outlier?
+
+fdata %>% filter(Species == "TRRA") %>% 
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
 
 ### MIXED EFFECTS MODELS ####
-# to-do: use lm4 and bootstrap confidence values
+# to-do: use lm4 and bootstrap confidence values 
+# bootMER(), perhaps predictInterval() 
 
 library(lme4) 
 
@@ -304,29 +258,63 @@ PHIDdf$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
 lynxdf$Treatment  <- factor(lynxdf$Treatment, levels = c("N", "C", "B"))
 ONASdf$Treatment <- factor(ONASdf$Treatment, levels = c("N", "C", "B"))
 TRRAdf$Treatment <- factor(TRRAdf$Treatment, levels = c("N", "C", "B"))
+
+# LME by species
 cricketm1 = lmer(resp_rate~Treatment + (1|Individual), data=cricketdf)
+plot(cricketm1)
 summary(cricketm1)
+
 MEFEm1 = lmer(resp_rate~Treatment + (1|Individual), data = MEFEdf)
+plot(MEFEm1)
 summary(MEFEm1) 
-boxplot(MEFEdf$resp_rate ~ MEFEdf$Treatment)
+
 PHIDm1 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf)
+plot(PHIDm1)
 summary(PHIDm1)
-boxplot(PHIDdf$resp_rate ~ PHIDdf$Treatment)
+
 lynxm1 = lmer(resp_rate~Treatment + (1|Individual), data = lynxdf)
+plot(lynxm1)
 summary(lynxm1)
+
 ONASm1 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf)
+plot(ONASm1)
 summary(ONASm1)
+
 TRRAm1 = lmer(resp_rate~Treatment + (1|Individual), data=TRRAdf)
+plot(TRRAm1)
 summary(TRRAm1)
 
+# Does removing low r2 and negative respiration change results? First pass says no, results consistent
+
+PHIDdf2 = fdata %>% filter(Species == "Phiddipus") %>% 
+  filter(!resp_rate < -1 & !r2 < .25)
+PHIDdf2$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
+PHIDm2 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf2)
+plot(PHIDm2)
+summary(PHIDm2)
+
+ONASdf2 = fdata %>% filter(Species == "ONAS") %>%
+  filter(!resp_rate < -1 & !r2 <.25)
+ONASdf2$Treatment <- factor(ONASdf$Treatment, levels = c("N","C","B"))
+ONASm2 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf2)
+plot(ONASm2)
+summary(ONASm2)
+
+lynxdf2 = fdata %>% filter(Species == "Lynx") %>%
+  filter(!resp_rate < -1 & !r2 <.25)
+lynxdf2$Treatment <- factor(lynxdf$Treatment, levels = c("N","C","B"))
+lynxm2 = lmer(resp_rate~Treatment + (1|Individual), data = lynxdf2)
+plot(lynxm2)
+summary(lynxm2)
+
+#### FIGURES ####
+# to-do: for final figure, overlay mean data points for each treatment
 minID = fdata %>% group_by(Species, Individual) %>%
   summarize(Start = min(Start)) %>%
   rename(Start0 = Start)
 
-#### FIGURES ####
-# to-do: for final figure, overlay mean data points for each treatment
-
-fdata %>% group_by(Species, Individual, Treatment) %>%
+fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+  group_by(Species, Individual, Treatment) %>%
   summarize(Start = min(Start)) %>%
   left_join(sumfdata) %>%
   left_join(minID) %>%
@@ -335,21 +323,23 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   geom_point(size=1) + geom_line(aes(group=Individual)) + theme_classic() +
   facet_grid(.~Species)
 
-
-fdata %>% group_by(Species, Individual, Treatment) %>%
+fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+  group_by(Species, Individual, Treatment) %>%
   ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
-  geom_line(data = fdata %>% group_by(Species, 
-                                      Treatment, 
-                                      Individual) %>%
+  geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+              group_by(Species, 
+                       Treatment, 
+                       Individual) %>%
                     summarise(AvRR = mean(resp_rate)),
              aes(x = Treatment, y = AvRR, group=Individual)) + 
-  geom_point(data = fdata %>% group_by(Species, 
-                                       Treatment, 
-                                       Individual) %>%
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+               group_by(Species, 
+                        Treatment, 
+                        Individual) %>%
                summarise(AvRR = mean(resp_rate)),
              aes(x = Treatment, y = AvRR, group=Individual)) + 
   theme_classic() +
   labs(y = "uL CO2 g-1 min-1") +
   facet_grid(.~Species)
 
-ggsave("Fear_results_Jan2020.png", plot = last_plot())
+ ggsave("Fear_results_21Feb2020.png", plot = last_plot())

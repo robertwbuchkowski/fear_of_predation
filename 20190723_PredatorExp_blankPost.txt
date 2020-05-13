@@ -1,0 +1,19 @@
+Date & time of file creation	7/23/2019 16:34																																																									
+Data file path	C:\Users\yaa23\Desktop\Resp\20190723_PredatorExp_blankPost.txt																																																									
+Raw data file path	C:\Users\yaa23\Desktop\Resp\20190723_PredatorExp_blankPost_raw.txt																																																									
+																																																										
+																																																										
+Parameter/Chamber	Wet weight [g]	Resp. volume [mL]	Fish length [cm]	Fractional error [%]	Chamber notes																																																					
+Chamber 1	0	17.13900000000000	10		emtpy																																																					
+Chamber 2	0	16.940			EMPTY																																																					
+Chamber 3	0	17.21900000000000			EMPTY																																																					
+Chamber 4	0	17.204			EMPTY																																																					
+Chamber 6	0	16.896			EMPTY																																																					
+Chamber 7	0	16.94600000000000			EMPTY																																																					
+Chamber 8	0	17.077			EMPTY																																																					
+																																																										
+																																																										
+Date &Time [DD-MM-YYYY/HH:MM:SS]	Time [sec]	Loop	Phase time [s]	CH 1 MO2 [mgO2/kg/hr]	CH 1 slope [%air sat./hr]	CH 1 R^2	CH 1 max O2 [%air sat.]	CH 1 min O2 [%air sat.]	CH 1 avg O2 [%air sat.]	CH 1 avg temp [°C]	CH 2 MO2 [mgO2/kg/hr]	CH 2 slope [%air sat./hr]	CH 2 R^2	CH 2 max O2 [%air sat.]	CH 2 min O2 [%air sat.]	CH 2 avg O2 [%air sat.]	CH 2 avg temp [°C]	CH 3 MO2 [mgO2/kg/hr]	CH 3 slope [%air sat./hr]	CH 3 R^2	CH 3 max O2 [%air sat.]	CH 3 min O2 [%air sat.]	CH 3 avg O2 [%air sat.]	CH 3 avg temp [°C]	CH 4 MO2 [mgO2/kg/hr]	CH 4 slope [%air sat./hr]	CH 4 R^2	CH 4 max O2 [%air sat.]	CH 4 min O2 [%air sat.]	CH 4 avg O2 [%air sat.]	CH 4 avg temp [°C]	CH 6 MO2 [mgO2/kg/hr]	CH 6 slope [%air sat./hr]	CH 6 R^2	CH 6 max O2 [%air sat.]	CH 6 min O2 [%air sat.]	CH 6 avg O2 [%air sat.]	CH 6 avg temp [°C]	CH 7 MO2 [mgO2/kg/hr]	CH 7 slope [%air sat./hr]	CH 7 R^2	CH 7 max O2 [%air sat.]	CH 7 min O2 [%air sat.]	CH 7 avg O2 [%air sat.]	CH 7 avg temp [°C]	CH 8 MO2 [mgO2/kg/hr]	CH 8 slope [%air sat./hr]	CH 8 R^2	CH 8 max O2 [%air sat.]	CH 8 min O2 [%air sat.]	CH 8 avg O2 [%air sat.]	CH 8 avg temp [°C]	AMB temp N°1 avg temp [°C]	AMB temp N°1 setpoint [°C]	AMB temp N°1 hysteresis [°C]	AMB temp N°2 avg temp [°C]	AMB temp N°2 setpoint [°C]	AMB temp N°2 hysteresis [°C]
+7/23/2019/16:47:04	730	1	F100/W30/M600	Inf	-0.193	0.001	101.87	101.06	101.43	18.78	Inf	-1.066	0.141	102.10	101.25	101.58	18.78	Inf	-1.525	0.217	102.28	101.42	101.79	18.78	Inf	-2.283	0.488	102.75	101.91	102.31	18.78	Inf	-0.994	0.027	101.44	100.10	100.82	18.70	Inf	-1.381	0.172	100.96	100.18	100.57	18.70	Inf	-1.358	0.191	97.72	96.88	97.34	18.70	18.78	20.00	0.10	18.71	20.00	0.10
+7/23/2019/16:59:14	1460	2	F100/W30/M600	Inf	-0.693	0.031	101.94	101.10	101.56	18.77	Inf	-0.985	0.097	101.93	101.15	101.58	18.77	Inf	-1.443	0.189	102.40	101.42	101.83	18.77	Inf	-1.958	0.401	102.88	102.13	102.46	18.77	Inf	-1.507	0.080	101.60	100.17	100.88	18.69	Inf	-1.080	0.107	101.13	100.24	100.62	18.69	Inf	-0.784	0.078	97.70	96.95	97.36	18.69	18.77	20.00	0.10	18.69	20.00	0.10
+7/23/2019/17:11:24	2190	3	F100/W30/M600	Inf	-0.901	0.091	102.24	101.19	101.63	18.76	Inf	-0.992	0.144	101.90	101.12	101.59	18.76	Inf	-1.332	0.220	102.26	101.50	101.85	18.76	Inf	-1.751	0.353	102.92	102.18	102.57	18.76	Inf	-1.011	0.035	101.62	100.22	100.91	18.68	Inf	-1.065	0.108	101.12	100.23	100.66	18.68	Inf	-0.649	0.061	97.68	97.05	97.38	18.68	18.76	20.00	0.10	18.68	20.00	0.10

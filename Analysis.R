@@ -2,12 +2,12 @@
 
 #### **TERRESTRIAL** ----
 # Main code by R.W. Buchkowski & N.R. Sommer.
-# Last update 13 May 2020 by N.R. Sommer
+# Last update 14 May 2020 by N.R. Sommer
 
 require(tidyverse)
 require(lubridate)
 
-#### Read-in Data ####
+#### READ-IN DATA ####
 IDtable = read_csv("Data/IDtable_13Sep2019.csv") %>%
   filter(!(Individual =="K" & Species =="TRRA")) %>% # remove lost isopod
   filter(!(Individual =="B_remove" & Species =="Lynx")) %>% # remove lost lynx
@@ -148,8 +148,7 @@ respdata = respdata %>% select(-QO2, -FlowV, -Flow2)
 
 NN = dim(IDtable)[1]
 
-#### Calculate respiration rates ####
-
+### Function to calculate respiration rates ----
 runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){ 
   select = RESPDATA$Time > as.numeric(IDTABLE[XX,"Start"]) & 
     RESPDATA$Time < as.numeric(IDTABLE[XX,"End"]) &
@@ -168,7 +167,7 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
   WEIGHT0 = ifelse(is.na(Weight), 0, Weight)
   
   if(IDTABLE$Julian[XX] < 19236) { 
-    vol = 60.79535394
+    vol = 60.79535394 # Volume by date, based on the tubing length of respirometer
   } else {
     if(IDTABLE$Julian[XX] > 19236) {
       vol = 53.7489539
@@ -187,24 +186,41 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
   c(r2 = r2, resprate = resprate)
 }
 
+### Calculate respiration rates ####
+
 output = cbind(IDtable, t(sapply(seq(1, NN, 1), FUN = runeach)))
 
+### CLEANING ----
+
 # Diagnose errors by line, if any
+## This takes time
 for(kk in 1:NN){ 
   aaaa = runeach(kk)
   print(kk)
 }
 
-# CO2 rates corrected by blanks
+# Calculate and check blanks
 blank = output %>% filter(Individual=="Blank") %>%
   group_by(Julian) %>%
   summarize(blank = mean(resprate))
 
-fdata = output %>% filter((Treatment %in% c("B", "C", "N"))) %>%
-  left_join(blank) %>%
-  mutate(resp_rate = resprate - blank)
+blank %>% ggplot(aes(x=Julian, y = blank)) + geom_point() # looks good
 
-# Calculates mean of corrected CO2 (avg of 3 obs) 
+# Join output and blanks
+fdata = output %>% filter((Treatment %in% c("B", "C", "N"))) %>%
+  left_join(blank)
+
+# Check consistency of observation length 
+fdata %>% mutate(End-Start == 200) %>% View() 
+
+# Observation length incorrect for ONAS T, treatment N. End is 41360, start is 41150.
+fdata$End[713] = 41350 # End time modified to 41350
+
+### Respiration rates corrected by blanks ----
+
+fdata = fdata %>% mutate(resp_rate = resprate - blank)
+
+### Calculates mean of corrected CO2 (avg of 3 obs) ----
 sumfdata = fdata %>% group_by(Species, Individual, Treatment) %>%
   summarize(resp_rate = mean(resp_rate))
 
@@ -213,16 +229,7 @@ fdata %>% group_by(Species, Individual, Treatment) %>%
   left_join(sumfdata) %>%
   mutate(cv = resp_ratesd/resp_rate)
 
-### Cleaning ####
-
-# Check blanks
-blank %>% ggplot(aes(x=Julian, y = blank)) + geom_point() # good
-
-# Check consistency of observation length 
-fdata %>% mutate(End-Start == 200) %>% View() 
-# Observation length incorrect for ONAS T, treatment N. End is 41360, start is 41150. 
-
-# Check R2 for resp rates
+# Check R2 for respirations rates to get a sense of how linear CO2 accumulation was over measurement period
 fdata %>% filter(Species == "Cricket") %>% 
   ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
 
@@ -233,18 +240,21 @@ fdata %>% filter(Species == "MEFE") %>%
   ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
 
 fdata %>% filter(Species == "ONAS") %>% 
-  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # outlier?
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # outliers?
 
 fdata %>% filter(Species == "Phiddipus") %>% 
-  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # outlier?
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # outliers?
 
 fdata %>% filter(Species == "TRRA") %>% 
-  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # good
+  ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # one outlier
 
-### Analysis ####
+# Even with low R2 on CO2 accumulation, we have no reason to believe these were not real measurements.
+
+### ANALYSIS ####
 
 require(lme4)
 require(parameters)
+require(MuMIn)
 
 # Filter data by species for mixed effects models 
 cricketdf = sumfdata %>% filter(Species=="Cricket")
@@ -261,7 +271,7 @@ lynxdf$Treatment  <- factor(lynxdf$Treatment, levels = c("N", "C", "B"))
 ONASdf$Treatment <- factor(ONASdf$Treatment, levels = c("N", "C", "B"))
 TRRAdf$Treatment <- factor(TRRAdf$Treatment, levels = c("N", "C", "B"))
 
-## Fit models by species --
+### Fit models by species ----
 
 # CRICKETS #
 cricketm1 = lmer(resp_rate~Treatment + (1|Individual), data=cricketdf)
@@ -270,10 +280,6 @@ summary(cricketm1)
 
 cricketm1.ci <- model_parameters(cricketm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 cricketm1.ci
-cricketm1.ci$Coefficient 
-cricketm1.ci$CI_low
-cricketm1.ci$CI_high
-
 r.squaredGLMM(cricketm1)
 
 # GRASSHOPPERS #
@@ -283,10 +289,6 @@ summary(MEFEm1)
 
 MEFEm1.ci <- model_parameters(MEFEm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 MEFEm1.ci
-MEFEm1.ci$Coefficient
-MEFEm1.ci$CI_low
-MEFEm1.ci$CI_high
-
 r.squaredGLMM(MEFEm1)
 
 # PHIDDIPUS #
@@ -296,10 +298,6 @@ summary(PHIDm1)
 
 PHIDm1.ci <- model_parameters(PHIDm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 PHIDm1.ci
-PHIDm1.ci$Coefficient
-PHIDm1.ci$CI_low
-PHIDm1.ci$CI_high
-
 r.squaredGLMM(PHIDm1)
 
 # LYNX # 
@@ -309,10 +307,6 @@ summary(lynxm1)
 
 lynxm1.ci <- model_parameters(lynxm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 lynxm1.ci
-lynxm1.ci$Coefficient
-lynxm1.ci$CI_low
-lynxm1.ci$CI_high
-
 r.squaredGLMM(lynxm1)
 
 # ONAS # 
@@ -322,10 +316,6 @@ summary(ONASm1)
 
 ONASm1.ci <- model_parameters(ONASm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 ONASm1.ci
-ONASm1.ci$Coefficient
-ONASm1.ci$CI_low
-ONASm1.ci$CI_high
-
 r.squaredGLMM(ONASm1)
 
 # TRRA # 
@@ -335,31 +325,29 @@ summary(TRRAm1)
 
 TRRAm1.ci <- model_parameters(TRRAm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 TRRAm1.ci
-TRRAm1.ci$Coefficient
-TRRAm1.ci$CI_low
-TRRAm1.ci$CI_high
-
 r.squaredGLMM(TRRAm1)
 
 # Does removing low r2 and negative respiration change results? --> 
-  # First pass says no, results consistent
+  # PHID, ONAS, and lynx from plots above
+##### NRS RETURN HERE ####
 
 PHIDdf2 = fdata %>% filter(Species == "Phiddipus") %>% 
-  filter(!resp_rate < -1 & !r2 < .25)
+  filter(!resp_rate < -0.1 & !r2 < .25)
 PHIDdf2$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
 PHIDm2 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf2)
 plot(PHIDm2)
 summary(PHIDm2)
 
+
 ONASdf2 = fdata %>% filter(Species == "ONAS") %>%
-  filter(!resp_rate < -1 & !r2 <.25)
+  filter(!resp_rate < -0.1 & !r2 <.25)
 ONASdf2$Treatment <- factor(ONASdf$Treatment, levels = c("N","C","B"))
 ONASm2 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf2)
 plot(ONASm2)
 summary(ONASm2)
 
 lynxdf2 = fdata %>% filter(Species == "Lynx") %>%
-  filter(!resp_rate < -1 & !r2 <.25)
+  filter(!resp_rate < -0.1 & !r2 <.25)
 lynxdf2$Treatment <- factor(lynxdf$Treatment, levels = c("N","C","B"))
 lynxm2 = lmer(resp_rate~Treatment + (1|Individual), data = lynxdf2)
 plot(lynxm2)
@@ -404,12 +392,13 @@ fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>%
  
 
 ### **AQUATIC** ----
- ### CLEANING ----
+ ### CLEANING FUNCTIONS ----
  ### Main code written by A. Arietta. Updated by Y. Alshwairikh
- ### Last update 2020 May 13 by N. Sommer
+ ### Last update 2020 May 14 by N. Sommer
  
 require(marelac)
 require(tidyverse)
+require(readr)
 require(lubridate)
 require(ggalt)
 require(zoo)
@@ -551,1178 +540,1045 @@ RespSumPlot1 <- function(RespSum){
  
 # CLEANING OF AQUATIC DATA BY DATE ----
   ### 11 Jul ----
- Pre <- RespDataPrep(  "20190711_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190711_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190711_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep( "20190711_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190711_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- RespSumPlot1(SumPre) # Quality control for slope values
- RespSumPlot1(SumAcc) # Quality control for slope values
- RespSumPlot1(SumSMR) # Quality control for slope values
- RespSumPlot1(SumTreat) # Quality control for slope values
- RespSumPlot1(SumPost) # Quality control for slope values
- 
-# Define background respiration ==
-## Background respiration accumulates over time as the animals are in the baths. We measure the background respiration rate in the clean chambers before introducing larvae and again at the end of the experiment. We assume a linear increase in background respiration over time and calculate the change in background respiration over the time span of the experiment. This allows us to estimate the amount of 02 consumption at each timepoint due to background respiration and can discount this from the larval MO2 estimates.
- 
-SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
-SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-  group_by(Type, CH) %>% 
-  summarise(avMO2 = mean(O2.mg_h), 
-            minMO2 = min(O2.mg_h), 
-            maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-            minR2= min(R2), maxR2 = max(R2), 
-            Temp.C = mean(Temp.C), 
-            sec = mean(sec))
- 
-(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
-BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-  mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
-# Combined analysis:
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul11.csv")
+# Define the run of interest:
+Pre <- RespDataPrep("20190711_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep("20190711_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep("20190711_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190711_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep("20190711_PredatorExp_blankPost_raw.txt")
 
-# REPEAT ##
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M4") # Removing extra, short measurment phase
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+Post <- filter(Post, Phase != "M4") # Removing extra, short measurment phase
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+
+SumSMR <- anti_join(SumSMR, data.frame("CH" = 8, "Phase" = "M5")) # Remove bad measurements
+
+SumTreat <- RespDataSummary(Treat, "Treat")
+
+SumTreat <- anti_join(SumTreat, data.frame("CH" = 8, "Phase" = "M8")) # Remove bad measurements
+
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ===
+## Background respiration accumulates over time as the animals are in the baths. We measure the background respiration rate in the clean chambers before introducing larvae and again at the end of the experiment. We assume a linear increase in background respiration over time and calculate the change in background respiration over the time span of the experiment. This allows us to estimate the amount of 02 consumption at each timepoint due to background respiration and can discount this from the larval MO2 estimates.
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements under R2 = 0.95
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements under R2 = 0.95
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ==
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul11.csv")
+
+## REPEAT ##
  
 ### 12 Jul ----
- Pre <- RespDataPrep(  "20190712_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190712_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190712_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190712_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190712_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul12.csv")
+# Define the run of interest:
+Pre <- RespDataPrep(  "20190712_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190712_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190712_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190712_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190712_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M1") # Removing wonky first measurement phase
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+Post <- filter(Post, Phase != "M1") # Removing wonky first measurement phase
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+
+SumTreat <- anti_join(SumTreat, data.frame("CH" = rep(6:8, each = 3), "Phase" = rep(c("M1", "M2", "M3"), 3))) # Remove Phases 1,2,3 for CH 6,7,8 during the treatment runs.
+
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ===
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ==
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul12.csv")
  
  ### 15 Jul ----
- Pre <- RespDataPrep(  "20190715_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190715_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190715_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190715_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190715_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep(  "20190715_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190715_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190715_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190715_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190715_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M5") # Removing extra, short measurment phase
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ==
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ==
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul15.csv")
  
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul15.csv")
- 
- ### 16 Jul ----
- Pre <- RespDataPrep(  "20190716_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190716_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190716_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190716_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190716_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul16.csv")
+### 16 Jul ----
+Pre <- RespDataPrep(  "20190716_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190716_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190716_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190716_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190716_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M4") # Removing extra, short measurment phase
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ==
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ==
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul16.csv")
  
  
  ### 17 Jul ----
- Pre <- RespDataPrep(  "20190717_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190717_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190717_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190717_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190717_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul17.csv")
+# Define the run of interest:
+Pre <- RespDataPrep(  "20190717_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190717_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190717_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190717_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190717_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M4") # Remove erroneous, extra measurement period
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+Post <- filter(Post, Phase != "M4") # Remove erroneous, extra measurement period
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ==
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ===
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul17.csv")
  
  ### 18 Jul ----
- Pre <- RespDataPrep(  "20190718_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190718_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190718_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190718_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190718_PredatorExp_blankPost_raw.txt")
+
+# Define the run of interest:
+Pre <- RespDataPrep(  "20190718_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190718_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190718_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190718_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190718_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M5") %>% filter(Phase != "M6") # Removing extra, short measurment phase
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+Treat <- filter(Treat, Phase != "M9") # Remove extra measurement phase
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ==
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ===
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul18.csv")
  
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul18.csv")
  
  ### 19 Jul ----
- Pre <- RespDataPrep(  "20190719_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190719_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190719_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190719_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190719_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul19.csv")
- 
- ### 22 Jul ----
- Pre <- RespDataPrep(  "20190722_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190722_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190722_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190722_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190722_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul22.csv")
- 
- ### 23 Jul ----
- Pre <- RespDataPrep(  "20190723_PredatorExp_blankPre_raw.txt")
- Acc <- RespDataPrep(  "20190723_PredatorExp_acc_raw.txt")
- SMR <- RespDataPrep(  "20190723_PredatorExp_smr_None_raw.txt")
- Treat <- RespDataPrep("20190723_PredatorExp_smr_Treat_raw.txt")
- Post <- RespDataPrep( "20190723_PredatorExp_blankPost_raw.txt")
- 
- RespPrepPlot1(Pre) # Quality control for raw data
- RespPrepPlot2(Pre) # Quality control for all slopes
- Resp.InputQC(Pre)
- 
- RespPrepPlot1(Post) # Quality control for raw data
- RespPrepPlot2(Post) # Quality control for all slopes
- Resp.InputQC(Post)
- 
- RespPrepPlot1(Acc) # Quality control for raw data
- RespPrepPlot2(Acc) # Quality control for all slopes
- Resp.InputQC(Acc)
- 
- RespPrepPlot1(SMR) # Quality control for raw data
- RespPrepPlot2(SMR) # Quality control for all slopes
- Resp.InputQC(SMR)
- 
- RespPrepPlot1(Treat) # Quality control for raw data
- RespPrepPlot2(Treat) # Quality control for all slopes
- Resp.InputQC(Treat)
- 
- # Create a summary of the measurement values
- SumPre <- RespDataSummary(Pre, "Pre")
- SumAcc <- RespDataSummary(Acc, "Acc")
- SumSMR <- RespDataSummary(SMR, "SMR")
- SumTreat <- RespDataSummary(Treat, "Treat")
- SumPost <- RespDataSummary(Post, "Post")
- 
- # QC
- RespSumPlot1(SumPre)
- RespSumPlot1(SumAcc)
- RespSumPlot1(SumSMR)
- RespSumPlot1(SumTreat)
- RespSumPlot1(SumPost)
- 
- # Define background respiration ===
- SumPre <- SumPre %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), 
-             avR2 = mean(R2), 
-             minR2= min(R2), 
-             maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- SumPost <- SumPost %>% filter(Phase != "M1") %>% 
-   group_by(Type, CH) %>% 
-   summarise(avMO2 = mean(O2.mg_h), 
-             minMO2 = min(O2.mg_h), 
-             maxMO2 = max(O2.mg_h), avR2 = mean(R2), 
-             minR2= min(R2), maxR2 = max(R2), 
-             Temp.C = mean(Temp.C), 
-             sec = mean(sec))
- 
- (SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
- 
- BG.corrrection <- left_join(
-   (SumPre %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PreMO2 = avMO2, PreSec = sec)), 
-   (SumPost %>% group_by() %>% 
-      select(CH, avMO2, sec) %>% 
-      rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
-   mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
-   select(CH, PreSec, PostSec, MO2.Cor)
- 
- (BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor
- 
- # Define experimental respiration rates ===
- 
- # . No Treatment analysis: ===
- 
- SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% 
-   mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
- 
- # Check for low quality measurements 
- SumSMR %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Treatment SMR analysis: ===
- 
- SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
- 
- # Check for influence of temperature over time:
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
-   geom_point()+
-   geom_smooth(method = 'loess', se = FALSE)
- summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
- 
- # Check for low quality measurements
- SumTreat %>% filter(Phase != "M1") %>%
-   ggplot(aes(x = CH, y = corO2.mg_h.g)) +
-   geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
-   scale_color_identity()
- 
- FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
- 
- # . Combined analysis: ===
- 
- Final <- bind_rows(SumSMR, SumTreat)
- 
- ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
-   geom_jitter(width = 0.2) +
-   theme_minimal()
- 
- summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
- 
- write.csv(Final, "Jul23.csv")
+# Define the run of interest:
+Pre <- RespDataPrep(  "20190719_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190719_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190719_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190719_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190719_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M4") # Removing extra, short measurment phase
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+Post <- filter(Post, Phase != "M4") # Removing extra, short measurment phase
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+
+SumSMR <- anti_join(SumSMR, data.frame("CH" = 8, "Phase" = "M5")) # Remove bad measurements
+
+SumTreat <- RespDataSummary(Treat, "Treat")
+
+SumTreat <- anti_join(SumTreat, data.frame("CH" = 8, "Phase" = "M8")) # Remove bad measurements
+
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ==
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ===
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul19.csv")
+ 
+### 22 Jul ----
+# Define the run of interest:
+Pre <- RespDataPrep(  "20190722_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190722_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190722_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190722_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190722_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M4")
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+Post <- filter(Post, Phase != "M4")
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ===
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ==
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul22.csv")
+ 
+### 23 Jul ----
+# Define the run of interest:
+Pre <- RespDataPrep(  "20190723_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "20190723_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "20190723_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("20190723_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "20190723_PredatorExp_blankPost_raw.txt")
+
+RespPrepPlot1(Pre) # Quality control for raw data
+RespPrepPlot2(Pre) # Quality control for all slopes
+Resp.InputQC(Pre)
+
+Pre <- filter(Pre, Phase != "M4")
+
+RespPrepPlot1(Post) # Quality control for raw data
+RespPrepPlot2(Post) # Quality control for all slopes
+Resp.InputQC(Post)
+
+RespPrepPlot1(Acc) # Quality control for raw data
+RespPrepPlot2(Acc) # Quality control for all slopes
+Resp.InputQC(Acc)
+
+RespPrepPlot1(SMR) # Quality control for raw data
+RespPrepPlot2(SMR) # Quality control for all slopes
+Resp.InputQC(SMR)
+
+RespPrepPlot1(Treat) # Quality control for raw data
+RespPrepPlot2(Treat) # Quality control for all slopes
+Resp.InputQC(Treat)
+
+Treat <- filter(Treat, Phase != "M9")
+
+# Create a summary of the measurement values
+SumPre <- RespDataSummary(Pre, "Pre")
+SumAcc <- RespDataSummary(Acc, "Acc")
+SumSMR <- RespDataSummary(SMR, "SMR")
+SumTreat <- RespDataSummary(Treat, "Treat")
+SumPost <- RespDataSummary(Post, "Post")
+
+RespSumPlot1(SumPre) # Quality control for slope values
+RespSumPlot1(SumAcc) # Quality control for slope values
+RespSumPlot1(SumSMR) # Quality control for slope values
+RespSumPlot1(SumTreat) # Quality control for slope values
+RespSumPlot1(SumPost) # Quality control for slope values
+
+# Define background respiration ==
+
+SumPre <- SumPre %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+SumPost <- SumPost %>% filter(Phase != "M1") %>% group_by(Type, CH) %>% summarise(avMO2 = mean(O2.mg_h), minMO2 = min(O2.mg_h), maxMO2 = max(O2.mg_h), avR2 = mean(R2), minR2= min(R2), maxR2 = max(R2), Temp.C = mean(Temp.C), sec = mean(sec))
+
+(SumPost$avMO2 - SumPre$avMO2) / (SumPost$sec - SumPre$sec)
+
+BG.corrrection <- left_join(
+  (SumPre %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PreMO2 = avMO2, PreSec = sec)), 
+  (SumPost %>% group_by() %>% select(CH, avMO2, sec) %>% rename(PostMO2 = avMO2, PostSec = sec)), by = "CH") %>%
+  mutate(MO2.Cor = (PostMO2 - PreMO2)/(PostSec - PreSec)) %>%
+  select(CH, PreSec, PostSec, MO2.Cor)
+
+(BG.corrrection$PostSec - BG.corrrection$PreSec) * BG.corrrection$MO2.Cor # In order to correct for the background respiration, I need to subtract the time in sec of the phase to get the number of seconds since the beginning of the experiment and then multiply by the correction factor.
+
+# Define experimental respiration rates ===
+
+# . No Treatment analysis: ===
+
+SumSMR <- left_join(SumSMR, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * as.factor(CH), data = SumSMR))
+
+# Check for low quality measurements 
+SumSMR %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.1, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalSMR <- SumSMR  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Treatment SMR analysis: ===
+
+SumTreat <- left_join(SumTreat, BG.corrrection, by = "CH") %>% mutate(corO2.mg_h = O2.mg_h - ((sec - PreSec) * MO2.Cor), corO2.mg_h.g = corO2.mg_h / Mass.g)
+
+# Check for influence of temperature over time:
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = Temp.C, corO2.mg_h, color = as.factor(CH))) +
+  geom_point()+
+  geom_smooth(method = 'loess', se = FALSE)
+summary(lm(corO2.mg_h ~ Temp.C * CH, data = SumTreat))
+
+# Check for low quality measurements
+SumTreat %>% filter(Phase != "M1") %>%
+  ggplot(aes(x = CH, y = corO2.mg_h.g)) +
+  geom_jitter(width = 0.2, aes(color = ifelse(RMSE.lm - RMSE.lo >= 0.01, 2, 3))) +
+  scale_color_identity()
+
+FinalTreat <- SumTreat  %>% select(Resp.DOY, Type, CH, Phase, corO2.mg_h, corO2.mg_h.g, R2, Mass.g, Temp.C, sec, CHvol.mL, Tubevol.mL)
+
+# . Combined analysis: ==
+
+Final <- bind_rows(SumSMR, SumTreat)
+
+ggplot(Final, aes(x = CH, y = corO2.mg_h.g, col = Type)) +
+  geom_jitter(width = 0.2) +
+  theme_minimal()
+
+summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
+
+write.csv(Final, "Jul23.csv")
  
  #### COMPILE ----
  ### Main code written by A. Arietta. Updated by Y. Alshwairikh
- ### Last update 13 March 2020 by N. Sommer
+ ### Last update 14 March 2020 by N. Sommer
  
- require(lme4)
- require(lmerTest)
- require(tidyverse)
- theme_set(theme_minimal())
+require(lme4)
+require(lmerTest)
+require(tidyverse)
+theme_set(theme_minimal())
  
  Jul11 <- read.csv("Jul11.csv")
  Jul12 <- read.csv("Jul12.csv")
@@ -1735,7 +1591,7 @@ BG.corrrection <- left_join(
  Jul23 <- read.csv("Jul23.csv")
  
  X <- rbind(Jul11, Jul12, Jul15, Jul16, Jul17, Jul18, Jul19, Jul22, Jul23)
- #bind the clean data into one master file
+ # Bind the clean data into one master file
  
  ## Analyse and correct for temperature ====
  
@@ -1784,7 +1640,7 @@ BG.corrrection <- left_join(
    scale_fill_manual(values = c("dodger blue", "orange red")) +
    theme_minimal()
  
- ## . Analyze metabolic rate change by temperature. ====
+ ## Analyze metabolic rate change by temperature. ====
  
  ggplot(X, aes(x = Temp.C, corO2.mg_h.g)) +
    geom_point() +
@@ -1795,8 +1651,7 @@ BG.corrrection <- left_join(
  X <- X %>% mutate(Ex = ifelse(CH == 1 | CH == 2 | CH == 3 | CH == 4, "DF", "CUE")) %>% 
    rename(MO2 = corO2.mg_h.g)
 
- #### **Note file name changed with continuous cleaning process----
-write.csv(X, "13MarchNRS_masterData_PredResp.csv")
+write.csv(X, "masterData_PredResp.csv")
 # Master data with assignment of treatment condition (Ex= DF or CUE) and MO2 adjusted for temperature
  
 ### ANALYSIS ----
@@ -1807,7 +1662,7 @@ write.csv(X, "13MarchNRS_masterData_PredResp.csv")
  
  ## Read in the compiled data ====
  
-X <- read.csv("13MarchNRS_masterData_PredResp.csv") %>%
+X <- read.csv("masterData_PredResp.csv") %>%
    mutate(RMSE.dif = RMSE.lm - RMSE.lo) %>% # Calculate a metric of linearity from the difference in loess and linear model fits
    mutate(Tx = ifelse(Type == "SMR", as.character(Type), as.character(Ex))) %>% # Make a new factor that combines the treatment levels and SMR baseline
    mutate(Tx = fct_relevel(Tx, "SMR", "CUE", "DF")) # Reorder the factors so that they make sense in the figures.
@@ -1828,10 +1683,10 @@ X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) %>%
    ggplot(aes(x = MO2)) +
    geom_histogram(binwidth = 0.001) # This looks like pretty reasonable distribution
  
-## . Remove outliers ====
+## Remove outliers ====
 X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of the high outliers with RSME differeces above 0.009
  
- ## . Restrict to the lower half of observations for each individual within a trial =====
+ ## Restrict to the lower half of observations for each individual within a trial =====
  # Given this, we'll average the lowest 50% of the data for each individual.
  X2 <- X %>% 
    left_join(X %>% group_by(Resp.DOY, Type, CH) %>% summarise(med.MO2 = median(MO2)), by = c("Resp.DOY", "Type", "CH")) %>%
@@ -1855,16 +1710,16 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
  mod1.sum <- summary(mod1)
  mod1.sum # Temperature has no strong directional effect but we will leave it in to account for it. There is no strong difference between the baseline and olfactory cue, but the olfactory plus visual cue is lower.
  
- ## . Confidence intervals ====
+ ## Confidence intervals ====
  # This will take a while to run
  
- mod1.ci <- model_parameters(mod1, ci = 0.95, bootstrap = TRUE, iterations = 10)
+ mod1.ci <- model_parameters(mod1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
  mod1.ci
  mod1.ci$Coefficient # The values are small so we need to output them explicitly
  mod1.ci$CI_low
  mod1.ci$CI_high
  
- ## . R2 values ====
+ ## R2 values ====
  r.squaredGLMM(mod1)
  
  ## Plot the figure ====
@@ -1881,191 +1736,4 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
  
  ggplot(X2.2, aes(x = Tx, y = MO2)) +
    geom_line(aes(group = Resp.DOY), size = 1, col = "grey40") +
-   geom_line(data = X2.3, aes(x = Tx, y = MO2, group = 1), col = "orange red", size = 2) # Need to change the labels in illustrator
- 
- #### ***Return to "old code" section here, unclear what is old vs needed with plots and YA's edits----
- 
- ####
- ####
- ####
- # OLD CODE
- ####
- ####
- ####
- 
- ## This is just an alternate way to plot the figure calculating means by hand (not the ideal method)
- avSMR <- X2 %>% select(Resp.DOY, Type, Ex, CH, Phase, Mass.g, Temp.C, MO2) %>%
-   filter(Type == "SMR") %>% group_by(Resp.DOY, CH) %>%
-   summarise(MO2 = mean(MO2)) %>% group_by(Resp.DOY) %>%
-   summarise(SMR = mean(MO2))
- 
- X2.1 <- X2 %>% select(Resp.DOY, Type, Ex, CH, Phase, Mass.g, Temp.C, MO2) %>%
-   group_by(Resp.DOY, Type, Ex, CH) %>%
-   summarise(MO2 = mean(MO2)) %>%
-   group_by() %>%
-   spread(Type, MO2) %>%
-   mutate(Treat.dif = Treat - SMR) %>%
-   group_by(Resp.DOY, Ex) %>%
-   summarise(Treat.dif = mean(Treat.dif)) %>%
-   group_by() %>%
-   spread(Ex, Treat.dif) %>%
-   left_join(avSMR, by = "Resp.DOY") %>%
-   mutate(CUE = SMR + CUE, DF = SMR + DF) %>%
-   gather(SMR, CUE, DF, key = "Tx", value = MO2) %>%
-   mutate(Tx = fct_relevel(Tx, "SMR", "CUE", "DF"))
- 
- ggplot(X2.1, aes(x = Tx, y = MO2)) +
-   geom_line(aes(group = Resp.DOY), size = 1, col = "grey40") +
-   geom_line(data = X2.3, aes(x = Tx, y = MO2, group = 1), col = "orange red", size = 2)
- 
- # Difference in mean of trucated MO2. ====
- X3 <- X2 %>% group_by(Resp.DOY, Ex, CH) %>% select(Type, MeanMO2.g) %>% spread(Type, MeanMO2.g)
- 
- X5 <- X2 %>%
-   mutate(avg.temp = mean(Temp.C))
- 
- summary(lm((Treat - SMR) ~ Ex, data = X3))
- 
- 
- ggplot(X2, aes(x = MeanMO2.g, fill = Type)) +
-   geom_density(adjust = 1, col = NA, alpha = .3) +
-   geom_vline(xintercept = 0, lty = 2) +
-   theme_minimal() # Exposure to predator had no impact on respiration rates.
- summary(lm(MeanMO2.g ~ Type, data = X2))
- # This is linear model of average O2 vs. type (basically is there difference
- #in meanO2 between SMR and treatment phase?) # no there's not
- 
- summary(lmer(MeanMO2.g ~ Type + Temp.C + (1|Resp.DOY/CH), data = X2))
- #Here we use a MM with temp as fixed effect, and day/ch as random effect
- #We expect every CH within day will have its own intercept
- #again, no difference in meanO2 in SMR vs. treatment
- 
- ggplot(X2, aes(x = Type, y = MeanMO2.g, col = Ex)) +
-   geom_point() +
-   stat_summary(aes(group = Ex), geom = "line", fun.y = mean, size = 2) +
-   theme_minimal() # There is no huge difference in the type of exposure.
- summary(lm(MeanMO2.g ~ Type * Ex, data = X2))
- summary(lmer(MeanMO2.g ~ Type * Ex + Temp.C + (1|Resp.DOY/CH), data = X2)) 
- # However there is an interesting difference in that adding the visual 
- #stimulus decreases respiration relative to the chemical cue alone (p = 0.2).
- 
- #Start YA
- hist(X2$MeanMO2.g)
- hist(X$MO2.mg_h.g)
- 
- X4 <- X2 %>% 
-   filter(Type == "Treat")
- 
- summary(lm(MeanMO2.g ~ Ex + Temp.C, data = X4))
- summary(lmer(MeanMO2.g ~ Ex + Temp.C + (1|Resp.DOY/CH), data = X4))
- 
- summary(lmer(MeanMO2.g ~ Ex + Temp.C + (1|indiv), data = X4 %>% mutate(indiv = paste0(Resp.DOY,"ch",CH))))
- 
- X4 <- X4 %>% mutate(indiv = paste0(Resp.DOY,"ch",CH))
- 
- X4 %>% filter(Resp.DOY == 193)
- 
- X4 %>% group_by(Resp.DOY, Type, Ex) %>% summarise_all(list(mean)) %>%
-   lm( ~ Ex + Temp.C, data = .,) %>%
-   summary(.)
- 
- X4 %>% ggplot(aes(x = Ex, y = dif))
- #End YA
- 
- ggplot(X3, aes(x = (Treat - SMR), fill = Ex)) +
-   geom_density(adjust = 1, col = NA, alpha = .3) +
-   geom_vline(xintercept = 0, lty = 2) +
-   theme_minimal()
- 
- p1 <- ggplot(X3, aes(x = Ex, y = (Treat - SMR))) +
-   geom_boxplot() +
-   geom_jitter(width = 0.1) +
-   theme_minimal()
- p1 + labs(y = "mean MO2 Treat - mean MO2 SMR") + 
-   scale_x_discrete(labels=c("Cue only", "Predator + Cue"))
- 
- # Difference in median MO2. ====
- 
- X4 <- X2 %>% group_by(Resp.DOY, Ex, CH) %>% select(Type, MedMO2.g) %>% spread(Type, MedMO2.g)
- summary(lm((SMR-Treat) ~ Ex, data = X4))
- 
- ggplot(X4, aes(x = Ex, y = (Treat - SMR))) +
-   geom_boxplot() +
-   geom_jitter(width = 0.1) +
-   theme_minimal()
- 
- ggplot(X2, aes(x = Type, y = MedMO2.g, col = Ex)) +
-   geom_point() +
-   stat_summary(aes(group = Ex), geom = "line", fun.y = mean, size = 2) +
-   theme_minimal()
- 
- ggplot(X4, aes(x = (Treat - SMR), fill = Ex)) +
-   geom_density(adjust = 1, col = NA, alpha = .3) +
-   geom_vline(xintercept = 0, lty = 2) +
-   theme_minimal()
- 
- # Difference in mean of lowest 50% of truncated MO2 measurements
- 
- X %>% group_by(Resp.DOY, Type, Ex, CH) %>% tally() %>% ggplot(aes(x = n)) + geom_histogram()
- 
- X %>% filter(R2 >= 0.95) %>% group_by(Resp.DOY, Type, Ex, CH) %>% tally() %>% ggplot(aes(x = n)) + geom_histogram()
- 
- X.QC.1 <- X %>% filter(R2 >= 0.95) %>% filter(rank(MO2.mg_h.g) != min(rank(MO2.mg_h.g))) %>% filter(rank(MO2.mg_h.g) != max(rank(MO2.mg_h.g))) %>% filter(rank(MO2.mg_h.g) <= (median(rank(X))+0.5)) %>% group_by(Resp.DOY, Type, Ex, CH) %>% tally() %>% arrange(n)
- 
- X.QC.1 %>% ggplot(aes(x = n)) + geom_histogram()
- 
- X.QC.2 <- X %>% filter(R2 >= 0.95) %>% # Excludes measurements with R2 below 0.95
-   group_by(Resp.DOY, Type, Ex, CH) %>% filter(rank(MO2.mg_h.g) != min(rank(MO2.mg_h.g))) %>% filter(rank(MO2.mg_h.g) != max(rank(MO2.mg_h.g))) %>% # Truncates the data by removing the highest and lowest values.
-   filter(rank(MO2.mg_h.g) <= (median(rank(X))+0.5)) %>% # Selects the lowest 50% of MO2 measurments for each individual in each treatment.
-   group_by(Resp.DOY, Type, Ex, CH) %>% tally() %>% arrange(n)
- 
- X.QC.2 %>% ggplot(aes(x = n)) + geom_histogram()
- 
- X5 <- X %>% filter(R2 >= 0.95) %>% # Excludes measurements with R2 below 0.95
-   group_by(Resp.DOY, Type, Ex, CH) %>% filter(rank(MO2.mg_h.g) != min(rank(MO2.mg_h.g))) %>% filter(rank(MO2.mg_h.g) != max(rank(MO2.mg_h.g))) %>% # Truncates the data by removing the highest and lowest values.
-   filter(rank(MO2.mg_h.g) <= (median(rank(X))+0.5)) %>% # Selects the lowest 50% of MO2 measurments for each individual in each treatment.
-   summarise(MeanMO2.g = mean(MO2.mg_h.g), Temp.C = mean(Temp.C), meanR2 = mean(R2), Mass.g = mean(Mass.g)) # Excludes the top and bottom values in the dataset then selects the lowest 50% of values.
- 
- # View(left_join(X5, X.QC.2, by = c("Resp.DOY", "Type", "Ex", "CH")) %>% group_by(Ex) %>% arrange(desc(meanR2)))
- 
- X5.1 <- X5 %>% group_by(Resp.DOY, Ex, CH) %>% select(Type, MeanMO2.g) %>% spread(Type, MeanMO2.g) %>% na.omit() %>% mutate(difMO2 = (Treat+0.0113) - SMR)
- 
- X5.Temp <- X5 %>% group_by(Resp.DOY, Ex, CH) %>% select(Type, Temp.C) %>% spread(Type, Temp.C) %>% na.omit() %>% mutate(difTemp = Treat - SMR)
- 
- X5.1 <- left_join(select(X5.1, Resp.DOY, Ex, CH, difMO2), select(X5.Temp, Resp.DOY, Ex, CH, difTemp), by = c("Resp.DOY", "Ex", "CH")) 
- 
- # View(arrange(X5.1, desc(difMO2)))
- 
- ggplot(X5.1, aes(x = difTemp, y = difMO2)) +
-   geom_point() +
-   geom_smooth()+
-   theme_minimal()
- 
- ggplot(X5.1, aes(x = Ex, y = difMO2)) +
-   geom_boxplot() +
-   geom_jitter(width = 0.1) +
-   theme_minimal()
- 
- summary(lm(difMO2 ~ Ex, data = X5.1))
- summary(lmer(difMO2 ~ Ex + difTemp + (1|CH), data = X5.1))
- 
- 
- ggplot(X5, aes(x = Type, y = MeanMO2.g, col = Ex)) +
-   geom_point() +
-   stat_summary(aes(group = Ex), geom = "line", fun.y = mean, size = 2) +
-   theme_minimal()
- 
- ggplot(X5.1, aes(x = difMO2, fill = Ex)) +
-   geom_density(adjust = 1, col = NA, alpha = .3) +
-   geom_vline(xintercept = 0, lty = 2) +
-   theme_minimal()
- 
- summary(lmer(difMO2 ~ Ex + (1|CH), data = X5.1))
- summary(lmer(difMO2 ~ Ex + difTemp + (1|CH), data = X5.1))
- # About a 1.5% reduction in MO2 with jus the Cue, and a 10% reduction with Cue + Dragon Fly
- X5 %>% group_by(Type) %>% summarise(grandmeanMO2.g = mean(MeanMO2.g, na.rm = TRUE))
- 
- X5 %>% filter(Ex == "DF")
- 
- X5.1 %>% group_by(Ex) %>% summarise(sd(difMO2))
- sd(X5.1$difMO2)
+   geom_line(data = X2.3, aes(x = Tx, y = MO2, group = 1), col = "orange red", size = 2) # Change labels in illustrator

@@ -2,12 +2,18 @@
 
 #### **TERRESTRIAL** ----
 # Main code by R.W. Buchkowski & N.R. Sommer.
-# Last update 14 May 2020 by N.R. Sommer
+# Last update 15 May 2020 by N.R. Sommer
 
 require(tidyverse)
 require(lubridate)
 
 #### READ-IN DATA ####
+
+## Treatment code:
+# N = no cue
+# C = chemical cue
+# B = both chemical & visual
+
 IDtable = read_csv("Data/IDtable_13Sep2019.csv") %>%
   filter(!(Individual =="K" & Species =="TRRA")) %>% # remove lost isopod
   filter(!(Individual =="B_remove" & Species =="Lynx")) %>% # remove lost lynx
@@ -256,20 +262,41 @@ require(lme4)
 require(parameters)
 require(MuMIn)
 
+## Renaming treatment codes for analyses & graphing
+# N --> Baseline
+# C --> Olfactory
+# B --> Visual+Olfactory
+
+sumfdata <- sumfdata %>%
+  mutate(Treatment = replace(Treatment, Treatment == "N", "Baseline")) %>%
+  mutate(Treatment = replace(Treatment, Treatment =="C", "Olfactory")) %>%
+  mutate(Treatment = replace(Treatment, Treatment == "B", "Visual+Olfactory"))
+
+fdata <- fdata %>%
+  mutate(Treatment = replace(Treatment, Treatment == "N", "Baseline")) %>%
+  mutate(Treatment = replace(Treatment, Treatment =="C", "Olfactory")) %>%
+  mutate(Treatment = replace(Treatment, Treatment == "B", "Visual+Olfactory"))
+
 # Filter data by species for mixed effects models 
-cricketdf = sumfdata %>% filter(Species=="Cricket")
+cricketdf = sumfdata %>% filter(Species=="Cricket") 
 MEFEdf = sumfdata %>% filter(Species== "MEFE")
 PHIDdf = sumfdata %>% filter(Species=="Phiddipus")
 lynxdf = sumfdata %>% filter(Species=="Lynx")
 ONASdf = sumfdata %>% filter(Species=="ONAS")
 TRRAdf = sumfdata %>% filter(Species=="TRRA")
 
-cricketdf$Treatment <- factor(cricketdf$Treatment, levels = c("N", "C", "B"))
-MEFEdf$Treatment <- factor(MEFEdf$Treatment, levels = c("N", "C", "B"))
-PHIDdf$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
-lynxdf$Treatment  <- factor(lynxdf$Treatment, levels = c("N", "C", "B"))
-ONASdf$Treatment <- factor(ONASdf$Treatment, levels = c("N", "C", "B"))
-TRRAdf$Treatment <- factor(TRRAdf$Treatment, levels = c("N", "C", "B"))
+cricketdf$Treatment <- factor(cricketdf$Treatment, 
+                              levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
+MEFEdf$Treatment <- factor(MEFEdf$Treatment, 
+                           levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
+PHIDdf$Treatment <- factor(PHIDdf$Treatment, 
+                           levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
+lynxdf$Treatment  <- factor(lynxdf$Treatment, 
+                            levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
+ONASdf$Treatment <- factor(ONASdf$Treatment, 
+                           levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
+TRRAdf$Treatment <- factor(TRRAdf$Treatment, 
+                           levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
 
 ### Fit models by species ----
 
@@ -327,74 +354,143 @@ TRRAm1.ci <- model_parameters(TRRAm1, ci = 0.95, bootstrap = TRUE, iterations = 
 TRRAm1.ci
 r.squaredGLMM(TRRAm1)
 
-# Does removing low r2 and negative respiration change results? --> 
-  # PHID, ONAS, and lynx from plots above
-##### NRS RETURN HERE ####
+### Cleaning II: Does removing low r2 and negative respiration change results? ---- 
+  # From plots above, look at PHID, ONAS, lynx
 
 PHIDdf2 = fdata %>% filter(Species == "Phiddipus") %>% 
-  filter(!resp_rate < -0.1 & !r2 < .25)
-PHIDdf2$Treatment <- factor(PHIDdf$Treatment, levels = c("N","C","B"))
+  filter(!resp_rate < 0 & !r2 < .25)
 PHIDm2 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf2)
 plot(PHIDm2)
 summary(PHIDm2)
-
+PHIDm2.ci <- model_parameters(PHIDm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
+# Comparision - no real differences. Remove these points.
+PHIDm2.ci
+PHIDm1.ci
 
 ONASdf2 = fdata %>% filter(Species == "ONAS") %>%
-  filter(!resp_rate < -0.1 & !r2 <.25)
-ONASdf2$Treatment <- factor(ONASdf$Treatment, levels = c("N","C","B"))
+  filter(!resp_rate < 0 & !r2 <.25)
 ONASm2 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf2)
 plot(ONASm2)
 summary(ONASm2)
+ONASm2.ci <- model_parameters(ONASm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
+# Comparison - no real differences. Remove these points
+ONASm2.ci
+ONASm1.ci
 
 lynxdf2 = fdata %>% filter(Species == "Lynx") %>%
-  filter(!resp_rate < -0.1 & !r2 <.25)
-lynxdf2$Treatment <- factor(lynxdf$Treatment, levels = c("N","C","B"))
+  filter(!resp_rate < 0 & !r2 <.25)
 lynxm2 = lmer(resp_rate~Treatment + (1|Individual), data = lynxdf2)
 plot(lynxm2)
 summary(lynxm2)
+lynxm2.ci <- model_parameters(lynxm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
+# Comparison - no real differences. Remove these points
+lynxm2.ci
+lynxm1.ci
 
 #### Figures ####
-# to-do: for final figure, overlay mean data points for each treatment
-minID = fdata %>% group_by(Species, Individual) %>%
-  summarize(Start = min(Start)) %>%
-  rename(Start0 = Start)
 
-fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-  group_by(Species, Individual, Treatment) %>%
-  summarize(Start = min(Start)) %>%
-  left_join(sumfdata) %>%
-  left_join(minID) %>%
-  mutate(Start = Start -Start0) %>%
-  ggplot(aes(x=Start, y=resp_rate, shape=Treatment)) + 
-  geom_point(size=1) + geom_line(aes(group=Individual)) + theme_classic() +
-  facet_grid(.~Species)
-
-fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+# MEFE & Crickets
+fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+  mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+  filter(Species %in% c("GRPE", "MEFE")) %>%
   group_by(Species, Individual, Treatment) %>%
   ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
   geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-              group_by(Species, 
+              mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+              filter(Species %in% c("GRPE", "MEFE")) %>%
+              group_by(Species,
                        Treatment, 
                        Individual) %>%
                     summarise(AvRR = mean(resp_rate)),
-             aes(x = Treatment, y = AvRR, group=Individual)) + 
-  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+             aes(x = Treatment, y = AvRR, group=Individual), color="light gray") + 
+  geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                filter(Species %in% c("GRPE", "MEFE")) %>%
                group_by(Species, 
-                        Treatment, 
-                        Individual) %>%
-               summarise(AvRR = mean(resp_rate)),
-             aes(x = Treatment, y = AvRR, group=Individual)) + 
+                         Treatment) %>%
+                summarise(AvRR = mean(resp_rate)), 
+              aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
+  geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+               filter(Species %in% c("GRPE", "MEFE")) %>%
+               group_by(Species, 
+                        Treatment) %>%
+               summarise(AvRR = mean(resp_rate)), 
+             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 1.1) +
   theme_classic() +
-  labs(y = "uL CO2 g-1 min-1") +
+  labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
   facet_grid(.~Species)
 
- ggsave("Fear_results_21Feb2020.png", plot = last_plot())
- 
+# ONAS & TRRA
+fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+  filter(Species %in% c("ONAS", "TRRA")) %>% 
+  group_by(Species, Individual, Treatment) %>%
+  ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
+  geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+              filter(Species %in% c("ONAS", "TRRA")) %>%
+              group_by(Species,
+                       Treatment, 
+                       Individual) %>%
+              summarise(AvRR = mean(resp_rate)),
+            aes(x = Treatment, y = AvRR, group=Individual), color="light gray") + 
+  geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+               filter(Species %in% c("ONAS", "TRRA")) %>%
+               group_by(Species, 
+                        Treatment) %>%
+               summarise(AvRR = mean(resp_rate)), 
+             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
+  geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+              filter(Species %in% c("ONAS", "TRRA")) %>%
+              group_by(Species, 
+                       Treatment) %>%
+              summarise(AvRR = mean(resp_rate)), 
+            aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 1.1) +
+  theme_classic() +
+  labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
+  facet_grid(.~Species)
+
+# LYNX & PHID
+fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+  mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+  mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+  filter(Species %in% c("OXSA", "PHspp")) %>%
+  group_by(Species, Individual, Treatment) %>%
+  ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
+  geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+              mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+              mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+              filter(Species %in% c("OXSA", "PHspp")) %>%
+              group_by(Species,
+                       Treatment, 
+                       Individual) %>%
+              summarise(AvRR = mean(resp_rate)),
+            aes(x = Treatment, y = AvRR, group=Individual), color="light gray") + 
+  geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+               filter(Species %in% c("OXSA", "PHspp")) %>%
+               group_by(Species, 
+                        Treatment) %>%
+               summarise(AvRR = mean(resp_rate)), 
+             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
+  geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+              mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+              mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+              filter(Species %in% c("OXSA", "PHspp")) %>%
+              group_by(Species, 
+                       Treatment) %>%
+              summarise(AvRR = mean(resp_rate)), 
+            aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 1.1) +
+  theme_classic() +
+  labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
+  facet_grid(.~Species)
+
+# adjust labels, add species in illustrator
 
 ### **AQUATIC** ----
  ### CLEANING FUNCTIONS ----
  ### Main code written by A. Arietta. Updated by Y. Alshwairikh
- ### Last update 2020 May 14 by N. Sommer
+ ### Last update 2020 May 15 by N. Sommer
  
 require(marelac)
 require(tidyverse)
@@ -428,7 +524,6 @@ RespDataPrep <- function(ExperimentData){
      datetime <- paste(Date, Time, sep = "T")
      DT <- as_datetime(datetime)
      DT} 
-   
    # This function reformats the temp and O2 columns from the wide-format raw text file so that they can be combined into a tidy-format dataframe in the next step.
    # It also converts the DateTime into a variable "sec" which is the second from midnight
    # It also computes a rolling average of raw O2 values to reduce noise using a window value of 5 seconds and aligning the new data to the right retains only averages of measurement data to the end of the measurement period.
@@ -1573,7 +1668,7 @@ write.csv(Final, "Jul23.csv")
  
  #### COMPILE ----
  ### Main code written by A. Arietta. Updated by Y. Alshwairikh
- ### Last update 14 March 2020 by N. Sommer
+ ### Last update 15 March 2020 by N. Sommer
  
 require(lme4)
 require(lmerTest)
@@ -1655,20 +1750,26 @@ write.csv(X, "masterData_PredResp.csv")
 # Master data with assignment of treatment condition (Ex= DF or CUE) and MO2 adjusted for temperature
  
 ### ANALYSIS ----
- require(lmer)
- require(parameters)
- require(tidyverse)
- require(MuMIn)
+require(lmer)
+require(parameters)
+require(tidyverse)
+require(MuMIn)
  
  ## Read in the compiled data ====
  
 X <- read.csv("masterData_PredResp.csv") %>%
    mutate(RMSE.dif = RMSE.lm - RMSE.lo) %>% # Calculate a metric of linearity from the difference in loess and linear model fits
-   mutate(Tx = ifelse(Type == "SMR", as.character(Type), as.character(Ex))) %>% # Make a new factor that combines the treatment levels and SMR baseline
-   mutate(Tx = fct_relevel(Tx, "SMR", "CUE", "DF")) # Reorder the factors so that they make sense in the figures.
+   mutate(Tx = ifelse(Type == "SMR", as.character(Type), as.character(Ex))) # Make a new factor that combines the treatment levels and SMR baseline
+
+
+X <- X %>% 
+  mutate(Tx = replace(Tx, Tx == "CUE", "Olfactory")) %>% # Rename treatments for consistency
+  mutate(Tx = replace(Tx, Tx == "DF", "Olfactory+Visual")) %>%
+  mutate(Tx = fct_relevel(Tx, "SMR", "Olfactory", "Olfactory+Visual")) # Reorder the factors so that they make sense in the figures.
  
- ## Refine the dataset ====
+## Refine the dataset ====
  # The main goal here is to make sure that we are only using the true minimum resting MO2 and excluding measurement phases when there are either problems with the sensor readings or the animal has increase respiration.
+
  
 X %>% ggplot(aes(x = RMSE.dif)) +
    geom_histogram() # These values look pretty good. Most of the loess fits match up to the linear fits really well.
@@ -1708,7 +1809,7 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
  
  mod1 <- lmer(MO2 ~ Tx + Temp.C + (1 | Resp.DOY/CH), data = X2)
  mod1.sum <- summary(mod1)
- mod1.sum # Temperature has no strong directional effect but we will leave it in to account for it. There is no strong difference between the baseline and olfactory cue, but the olfactory plus visual cue is lower.
+ mod1.sum # Temperature has no strong directional effect but we will leave it in to account for it.
  
  ## Confidence intervals ====
  # This will take a while to run
@@ -1722,7 +1823,7 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
  ## R2 values ====
  r.squaredGLMM(mod1)
  
- ## Plot the figure ====
+ ## FIGURE ====
  
  X2.2 <- X2 %>% 
    mutate(fit.re = predict(mod1, re.form = NULL)) %>% 
@@ -1734,6 +1835,13 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
    group_by(Tx) %>% 
    summarise(MO2 = mean(fit) + mod1.sum$sigma) # This predicts the value excluding the random effects. These values are the same for all phases and individuals and trials, so again, we just need to average to collapse these into single values. The predictions actually EXCLUDE the random effects rather than average them, so we add the residual sigma from the model to shift the values up to the average for plotting.
  
- ggplot(X2.2, aes(x = Tx, y = MO2)) +
-   geom_line(aes(group = Resp.DOY), size = 1, col = "grey40") +
-   geom_line(data = X2.3, aes(x = Tx, y = MO2, group = 1), col = "orange red", size = 2) # Change labels in illustrator
+ ggplot(X2.2,
+        aes(x = Tx, y = MO2)) +
+   geom_boxplot(aes(group=Tx), col = "light gray") + 
+   geom_point(aes(), size = 1, col = "light gray") +
+   geom_line(data = X2.3,
+             aes(x = Tx, y = MO2, group = 1), col = "black", size = 1.1) +
+   geom_point(data = X2.3, aes(x = Tx, y = MO2, group = 1), col = "black", size = 2) +
+   theme_classic() +
+   labs(y= "Metabolic rate (O2 * water volume mL /g)", x= "Predator Cue")
+ 

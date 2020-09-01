@@ -2,7 +2,7 @@
 
 #### **TERRESTRIAL** ----
 # Main code by R.W. Buchkowski & N.R. Sommer.
-# Last update 15 May 2020 by N.R. Sommer
+# Last update 1 Sep 2020 by N.R. Sommer
 
 require(tidyverse)
 require(lubridate)
@@ -407,11 +407,12 @@ require("gghalves")
 
 
 # MEFE & Crickets
+
 fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
   mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
   filter(Species %in% c("GRPE", "MEFE")) %>%
   group_by(Species, Individual, Treatment) %>%
-  ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
+  ggplot(aes(x=Treatment, y=resp_rate)) +
   geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
               filter(Species %in% c("GRPE", "MEFE")) %>%
@@ -431,7 +432,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                        Individual) %>%
               summarise(AvRR = mean(resp_rate)) %>%
                filter(Treatment == "Olfactory"),
-            aes(y = AvRR), 
+            aes(y = AvRR, group = Individual), 
             color="dodgerblue", 
             position = position_dodge(width=0.2)) + 
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
@@ -442,7 +443,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                         Individual) %>%
                summarise(AvRR = mean(resp_rate)) %>%
                filter(Treatment == "Baseline"),
-             aes(y = AvRR), 
+             aes(y = AvRR, group = Individual), 
              color="darkgreen", 
              position = position_dodge(width=0.2)) +
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
@@ -453,39 +454,181 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                         Individual) %>%
                summarise(AvRR = mean(resp_rate)) %>%
                filter(Treatment == "Visual+Olfactory"),
-             aes(y = AvRR), 
+             aes(y = AvRR, group = Individual), 
              color= "darkorange", 
              position = position_dodge(width=0.2)) +
   
+  # GRPE VISUAL + OLFACTORY
   geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-                     filter(Species %in% c("GRPE", "MEFE")) %>%
-                     group_by(Species,
-                              Treatment, 
-                              Individual) %>%
-                     summarise(AvRR = mean(resp_rate)) %>%
                      filter(Treatment == "Visual+Olfactory") %>%
-                     filter(Species == "GRPE"),
+                     filter(Species == "GRPE") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
                    aes(x = Treatment, y = AvRR), 
-                   position = position_nudge(x = -.3), 
-                   side = "l", fill = 'dodgerblue') +
-  ##### this breaks with error "no non-missing arguments to max, returning -Inf & computation failed, replacement has 1 row, data has 0
-  
+                   position = position_nudge(x = -2.75), 
+                   side = "l", fill = 'darkorange', alpha = 0.6) +
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      filter(Treatment == "Visual+Olfactory") %>%
+                      filter(Species == "GRPE") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR),
+                   position = position_nudge(x = -2.25), 
+                   side = "l", outlier.shape = NA, 
+                   center = TRUE, errorbar.draw = FALSE, width = .2,
+                   fill = 'darkorange', alpha = 0.6) +
+  
+  # GRPE OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-                     filter(Species %in% c("GRPE", "MEFE")) %>%
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "GRPE") %>%
                      group_by(Species,
-                              Treatment, 
-                              Individual) %>%
-                     summarise(AvRR = mean(resp_rate)) %>%
-                     filter(Treatment == "Visual+Olfactory") %>%
-                     filter(Species == "GRPE"),
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
                    aes(x = Treatment, y = AvRR), 
-                   position = position_nudge(x = -.3), 
-                   side = "l", fill = 'dodgerblue') + 
-  ##### this returns multiple boxplots as single points
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'dodgerblue', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "GRPE") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.4), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'dodgerblue', alpha = 0.6) +
+  
+  # GRPE BASELINE
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                     filter(Treatment == "Baseline") %>%
+                     filter(Species == "GRPE") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.75), 
+                   side = "l", fill = 'darkgreen', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      filter(Treatment == "Baseline") %>%
+                      filter(Species == "GRPE") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -.55), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkgreen', alpha = 0.6) +
+  
+  # MEFE VISUAL + OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "MEFE") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -2.75), 
+                   side = "l", fill = 'darkorange', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Visual+Olfactory") %>%
+                      filter(Species == "MEFE") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -2.25), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkorange', alpha = 0.6) +
+  
+  # MEFE OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "MEFE") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'dodgerblue', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "MEFE") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.4), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'dodgerblue', alpha = 0.6) +
+  
+  # MEFE BASELINE
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                     filter(Treatment == "Baseline") %>%
+                     filter(Species == "MEFE") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.75), 
+                   side = "l", fill = 'darkgreen', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      filter(Treatment == "Baseline") %>%
+                      filter(Species == "MEFE") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -.55), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkgreen', alpha = 0.6) +
+  
+  # OVERLAY MEANS
+  geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+              mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+              filter(Species %in% c("GRPE", "MEFE")) %>%
+              group_by(Species, 
+                       Treatment) %>%
+              summarise(AvRR = mean(resp_rate)), 
+            aes(x=Treatment, y = AvRR, group = Species), color = "black", size = .8) +
+  
+  geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+               filter(Species %in% c("GRPE", "MEFE")) %>%
+               group_by(Species, 
+                        Treatment) %>%
+               summarise(AvRR = mean(resp_rate)), 
+             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
   
   theme_classic() +
+  coord_cartesian(xlim = c(3.5,.3)) +
   labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
   facet_grid(.~Species)
 
@@ -493,14 +636,195 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
 fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
   filter(Species %in% c("ONAS", "TRRA")) %>% 
   group_by(Species, Individual, Treatment) %>%
-  ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
+  ggplot(aes(x=Treatment, y=resp_ratel)) +
   geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
               filter(Species %in% c("ONAS", "TRRA")) %>%
               group_by(Species,
                        Treatment, 
                        Individual) %>%
               summarise(AvRR = mean(resp_rate)),
-            aes(x = Treatment, y = AvRR, group=Individual), color="light gray") + 
+            aes(x = Treatment, y = AvRR, group=Individual), 
+            color="light gray", 
+            size = 0.5,
+            position = position_dodge(width=0.2)) + 
+  
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+               filter(Species %in% c("ONAS", "TRRA")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Olfactory"),
+             aes(y = AvRR, group = Individual), 
+             color="dodgerblue", 
+             position = position_dodge(width=0.2)) + 
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+               filter(Species %in% c("ONAS", "TRRA")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Baseline"),
+             aes(y = AvRR, group = Individual), 
+             color="darkgreen", 
+             position = position_dodge(width=0.2)) +
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+               filter(Species %in% c("ONAS", "TRRA")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Visual+Olfactory"),
+             aes(y = AvRR, group = Individual), 
+             color= "darkorange", 
+             position = position_dodge(width=0.2)) +
+  
+  # ONAS VISUAL + OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "ONAS") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -2.75), 
+                   side = "l", fill = 'darkorange', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Visual+Olfactory") %>%
+                      filter(Species == "ONAS") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -2.25), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkorange', alpha = 0.6) +
+  
+  # ONAS OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "ONAS") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'dodgerblue', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "ONAS") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.4), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'dodgerblue', alpha = 0.6) +
+  
+  # ONAS BASELINE
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Baseline") %>%
+                     filter(Species == "ONAS") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.75), 
+                   side = "l", fill = 'darkgreen', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Baseline") %>%
+                      filter(Species == "ONAS") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -.55), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkgreen', alpha = 0.6) +
+  
+  # TRRA VISUAL + OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "TRRA") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -2.75), 
+                   side = "l", fill = 'darkorange', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Visual+Olfactory") %>%
+                      filter(Species == "TRRA") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -2.25), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkorange', alpha = 0.6) +
+  
+  # TRRA OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "TRRA") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'dodgerblue', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "TRRA") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.4), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'dodgerblue', alpha = 0.6) +
+  
+  # TRRA BASELINE
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     filter(Treatment == "Baseline") %>%
+                     filter(Species == "TRRA") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.75), 
+                   side = "l", fill = 'darkgreen', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      filter(Treatment == "Baseline") %>%
+                      filter(Species == "TRRA") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -.55), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkgreen', alpha = 0.6) +
+  
+  # OVERLAY MEANS
   geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                filter(Species %in% c("ONAS", "TRRA")) %>%
                group_by(Species, 
@@ -512,19 +836,24 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
               group_by(Species, 
                        Treatment) %>%
               summarise(AvRR = mean(resp_rate)), 
-            aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 1.1) +
+            aes(x=Treatment, y = AvRR, group = Species), color = "black", size = .8) +
+  
   theme_classic() +
+  coord_cartesian(xlim = c(3.5,.3)) +
   labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
   facet_grid(.~Species)
 
 # LYNX & PHID
-fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
   mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
   mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
   filter(Species %in% c("OXSA", "PHspp")) %>%
-  group_by(Species, Individual, Treatment) %>%
-  ggplot(aes(x=Treatment, y=resp_rate, group=Individual)) +
-  geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+  group_by(Species, 
+           Individual, 
+           Treatment) %>%
+  ggplot(aes(x=Treatment, y=resp_rate)) +
+  
+  geom_line(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
               filter(Species %in% c("OXSA", "PHspp")) %>%
@@ -532,7 +861,205 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                        Treatment, 
                        Individual) %>%
               summarise(AvRR = mean(resp_rate)),
-            aes(x = Treatment, y = AvRR, group=Individual), color="light gray") + 
+            aes(x = Treatment, y = AvRR, group=Individual), 
+            color="light gray", 
+            size = 0.5,
+            position = position_dodge(width=0.2)) + 
+  
+  geom_point(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
+               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+               filter(Species %in% c("OXSA", "PHspp")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Olfactory"),
+             aes(y = AvRR, group = Individual), 
+             color="dodgerblue", 
+             position = position_dodge(width=0.2)) + 
+  geom_point(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
+               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+               filter(Species %in% c("OXSA", "PHspp")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Baseline"),
+             aes(y = AvRR, group = Individual), 
+             color="darkgreen", 
+             position = position_dodge(width=0.2)) +
+  geom_point(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
+               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+               filter(Species %in% c("OXSA", "PHspp")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Visual+Olfactory"),
+             aes(y = AvRR, group = Individual), 
+             color= "darkorange", 
+             position = position_dodge(width=0.2)) +
+  
+  # OXSA VISUAL + OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "OXSA") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -2.75), 
+                   side = "l", fill = 'darkorange', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                      filter(Treatment == "Visual+Olfactory") %>%
+                      filter(Species == "OXSA") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -2.25), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkorange', alpha = 0.6) +
+  
+  # OXSA OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "OXSA") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'dodgerblue', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "OXSA") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.4), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'dodgerblue', alpha = 0.6) +
+  
+  # OXSA BASELINE
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -.6 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "OXSA") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'darkgreen', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "OXSA") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.55), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkgreen', alpha = 0.6) +
+  
+  # PHsp VISUAL + OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "PHspp") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -2.75), 
+                   side = "l", fill = 'darkorange', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                      filter(Treatment == "Visual+Olfactory") %>%
+                      filter(Species == "PHspp") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -2.25), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkorange', alpha = 0.6) +
+  
+  # PHsp OLFACTORY
+  geom_half_violin(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                     filter(Treatment == "Olfactory") %>%
+                     filter(Species == "PHspp") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -1.75), 
+                   side = "l", fill = 'dodgerblue', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                      filter(Treatment == "Olfactory") %>%
+                      filter(Species == "PHspp") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -1.4), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'dodgerblue', alpha = 0.6) +
+  
+  # PHsp BASELINE
+  geom_half_violin(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                     filter(Treatment == "Baseline") %>%
+                     filter(Species == "PHspp") %>%
+                     group_by(Species,
+                              Individual,
+                              Treatment) %>%
+                     summarise(AvRR = mean(resp_rate)),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.75), 
+                   side = "l", fill = 'darkgreen', alpha = 0.6) +
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                      mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                      filter(Treatment == "Baseline") %>%
+                      filter(Species == "PHspp") %>%
+                      group_by(Species,
+                               Individual,
+                               Treatment) %>%
+                      summarise(AvRR = mean(resp_rate)),
+                    aes(x = Treatment, y = AvRR),
+                    position = position_nudge(x = -.55), 
+                    side = "l", outlier.shape = NA, 
+                    center = TRUE, errorbar.draw = FALSE, width = .2,
+                    fill = 'darkgreen', alpha = 0.6) +
+  
+  # OVERLAY MEANS
   geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
                mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
@@ -549,16 +1076,16 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                        Treatment) %>%
               summarise(AvRR = mean(resp_rate)), 
             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 1.1) +
+ 
   theme_classic() +
+  coord_cartesian(xlim = c(3.5,.3)) +
   labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
   facet_grid(.~Species)
 
-# adjust labels, add species in illustrator
-
 ### **AQUATIC** ----
  ### CLEANING FUNCTIONS ----
- ### Main code written by A. Arietta. Updated by Y. Alshwairikh
- ### Last update 2020 May 15 by N. Sommer
+ ### Main code written by A. Arietta.
+ ### Last update 2020 Sep 1 by N.R. Sommer
  
 require(marelac)
 require(tidyverse)
@@ -1735,8 +2262,8 @@ summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
 write.csv(Final, "Jul23.csv")
  
  #### COMPILE ----
- ### Main code written by A. Arietta. Updated by Y. Alshwairikh
- ### Last update 15 March 2020 by N. Sommer
+ ### Main code written by A. Arietta.
+ ### Last update 2020 1 Sep by N.R. Sommer
  
 require(lme4)
 require(lmerTest)
@@ -1903,13 +2430,96 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
    group_by(Tx) %>% 
    summarise(MO2 = mean(fit) + mod1.sum$sigma) # This predicts the value excluding the random effects. These values are the same for all phases and individuals and trials, so again, we just need to average to collapse these into single values. The predictions actually EXCLUDE the random effects rather than average them, so we add the residual sigma from the model to shift the values up to the average for plotting.
  
- ggplot(X2.2,
+ 
+ geom_half_violin(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                    mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                    filter(Treatment == "Olfactory") %>%
+                    filter(Species == "PHspp") %>%
+                    group_by(Species,
+                             Individual,
+                             Treatment) %>%
+                    summarise(AvRR = mean(resp_rate)),
+                  aes(x = Treatment, y = AvRR), 
+                  position = position_nudge(x = -1.75), 
+                  side = "l", fill = 'dodgerblue', alpha = 0.6) +
+   geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
+                       mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                       filter(Treatment == "Olfactory") %>%
+                       filter(Species == "PHspp") %>%
+                       group_by(Species,
+                                Individual,
+                                Treatment) %>%
+                       summarise(AvRR = mean(resp_rate)),
+                     aes(x = Treatment, y = AvRR),
+                     position = position_nudge(x = -1.4), 
+                     side = "l", outlier.shape = NA, 
+                     center = TRUE, errorbar.draw = FALSE, width = .2,
+                     fill = 'dodgerblue', alpha = 0.6)
+ 
+ X2.2 <- X2.2 %>% mutate(Tx = recode(Tx, SMR = "Baseline"))
+ X2.3 <- X2.3 %>% mutate(Tx = recode(Tx, SMR = "Baseline"))
+ 
+ ggplot(data = X2.2,
         aes(x = Tx, y = MO2)) +
-   geom_boxplot(aes(group=Tx), col = "light gray") + 
-   geom_point(aes(), size = 1, col = "light gray") +
-   geom_line(data = X2.3,
-             aes(x = Tx, y = MO2, group = 1), col = "black", size = 1.1) +
-   geom_point(data = X2.3, aes(x = Tx, y = MO2, group = 1), col = "black", size = 2) +
-   theme_classic() +
-   labs(y= "Metabolic rate (O2 * water volume mL /g)", x= "Predator Cue")
+    
+   # BASELINE
+    geom_point(data = X2.2 %>% 
+                filter(Tx == "Baseline"),
+              aes(), size = 1, col = "darkgreen") +
+   geom_half_boxplot(data = X2.2 %>% 
+                     filter(Tx == "Baseline"),
+                     aes(y=MO2), 
+                     position = position_nudge(x = -.4),
+                     outlier.shape = NA, 
+                     center = TRUE, errorbar.draw = FALSE, width = .2,
+                     fill = 'darkgreen', alpha = 0.6) +
+    geom_half_violin(data = X2.2 %>%
+                      filter(Tx == "Baseline"),
+                      aes(y=MO2),
+                    position = position_nudge(x = -.6), 
+                    side = "l", fill = 'darkgreen', alpha = 0.6) +
+   # OLFACTORY
+   geom_point(data = X2.2 %>% filter(Tx == "Olfactory"),
+              aes(), size = 1, col = "dodgerblue") +
+   geom_half_boxplot(data = X2.2 %>% 
+                       filter(Tx == "Olfactory"),
+                     aes(y=MO2), 
+                     position = position_nudge(x = -1.25),
+                     outlier.shape = NA, 
+                     center = TRUE, errorbar.draw = FALSE, width = .2,
+                     fill = 'dodgerblue', alpha = 0.6) +
+   geom_half_violin(data = X2.2 %>%
+                      filter(Tx == "Olfactory"),
+                    aes(y=MO2),
+                    position = position_nudge(x = -1.6), 
+                    side = "l", fill = 'dodgerblue', alpha = 0.6) +
+   
+   # OLFACTORY+VISUAL
+   geom_point(data = X2.2 %>% filter(Tx == "Olfactory+Visual"),
+              aes(), size = 1, col = "darkorange") +
+   geom_half_boxplot(data = X2.2 %>% 
+                       filter(Tx == "Olfactory+Visual"),
+                     aes(y=MO2), 
+                     position = position_nudge(x = -2.1),
+                     outlier.shape = NA, 
+                     center = TRUE, errorbar.draw = FALSE, width = .2,
+                     fill = 'darkorange', alpha = 0.6) +
+   geom_half_violin(data = X2.2 %>%
+                      filter(Tx == "Olfactory+Visual"),
+                    aes(y=MO2),
+                    position = position_nudge(x = -2.6), 
+                    side = "l", fill = 'darkorange', alpha = 0.6) +
+   
+   # MEAN OVERLAY
+   geom_line(data = X2.3 %>% mutate(Tx = recode(Tx, SMR = "Baseline")),
+             aes(x = Tx, y = MO2, group = 1), 
+             col = "black", 
+             size = 1.1) +
+   geom_point(data = X2.3, 
+               aes(x = Tx, y = MO2, group = 1), 
+               col = "black", size = 2) +
+    
+   coord_cartesian(xlim = c(3.75,.3)) +
+    theme_classic() +
+    labs(y = "Metabolic rate (O2 * water volume mL /g)", x = "Predator Cue")
  

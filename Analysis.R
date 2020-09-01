@@ -304,55 +304,55 @@ TRRAdf$Treatment <- factor(TRRAdf$Treatment,
 cricketm1 = lmer(resp_rate~Treatment + (1|Individual), data=cricketdf)
 plot(cricketm1)
 summary(cricketm1)
+r.squaredGLMM(cricketm1)
 
 cricketm1.ci <- model_parameters(cricketm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 cricketm1.ci
-r.squaredGLMM(cricketm1)
 
 # GRASSHOPPERS #
 MEFEm1 = lmer(resp_rate~Treatment + (1|Individual), data = MEFEdf)
 plot(MEFEm1)
 summary(MEFEm1)
+r.squaredGLMM(MEFEm1)
 
 MEFEm1.ci <- model_parameters(MEFEm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 MEFEm1.ci
-r.squaredGLMM(MEFEm1)
 
 # PHIDDIPUS #
 PHIDm1 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf)
 plot(PHIDm1)
 summary(PHIDm1)
+r.squaredGLMM(PHIDm1)
 
 PHIDm1.ci <- model_parameters(PHIDm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 PHIDm1.ci
-r.squaredGLMM(PHIDm1)
 
 # LYNX # 
 lynxm1 = lmer(resp_rate~Treatment + (1|Individual), data = lynxdf)
 plot(lynxm1)
 summary(lynxm1)
+r.squaredGLMM(lynxm1)
 
 lynxm1.ci <- model_parameters(lynxm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 lynxm1.ci
-r.squaredGLMM(lynxm1)
 
 # ONAS # 
 ONASm1 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf)
 plot(ONASm1)
 summary(ONASm1)
+r.squaredGLMM(ONASm1)
 
 ONASm1.ci <- model_parameters(ONASm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 ONASm1.ci
-r.squaredGLMM(ONASm1)
 
 # TRRA # 
 TRRAm1 = lmer(resp_rate~Treatment + (1|Individual), data=TRRAdf)
 plot(TRRAm1)
 summary(TRRAm1)
+r.squaredGLMM(TRRAm1)
 
 TRRAm1.ci <- model_parameters(TRRAm1, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 TRRAm1.ci
-r.squaredGLMM(TRRAm1)
 
 ### Cleaning II: Does removing low r2 and negative respiration change results? ---- 
   # From plots above, look at PHID, ONAS, lynx
@@ -363,6 +363,7 @@ PHIDm2 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf2)
 plot(PHIDm2)
 summary(PHIDm2)
 PHIDm2.ci <- model_parameters(PHIDm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
+r.squaredGLMM(PHIDm2)
 # Comparision - no real differences. Remove these points.
 PHIDm2.ci
 PHIDm1.ci
@@ -373,6 +374,7 @@ ONASm2 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf2)
 plot(ONASm2)
 summary(ONASm2)
 ONASm2.ci <- model_parameters(ONASm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
+r.squaredGLMM(ONASm2)
 # Comparison - no real differences. Remove these points
 ONASm2.ci
 ONASm1.ci
@@ -383,11 +385,26 @@ lynxm2 = lmer(resp_rate~Treatment + (1|Individual), data = lynxdf2)
 plot(lynxm2)
 summary(lynxm2)
 lynxm2.ci <- model_parameters(lynxm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
+r.squaredGLMM(lynxm2)
 # Comparison - no real differences. Remove these points
 lynxm2.ci
 lynxm1.ci
 
 #### Figures ####
+
+detach("package:parameters", unload=TRUE)
+detach("package:MuMIn", unload=TRUE)
+detach("package:tidyverse", unload=TRUE)
+detach("package:lubridate", unload=TRUE)
+
+require("plyr")
+require("lattice")
+require("ggplot2")
+require("dplyr")
+require("Rmisc")
+require("devtools")
+require("gghalves")
+
 
 # MEFE & Crickets
 fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
@@ -402,21 +419,72 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                        Treatment, 
                        Individual) %>%
                     summarise(AvRR = mean(resp_rate)),
-             aes(x = Treatment, y = AvRR, group=Individual), color="light gray") + 
-  geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
-               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-                filter(Species %in% c("GRPE", "MEFE")) %>%
-               group_by(Species, 
-                         Treatment) %>%
-                summarise(AvRR = mean(resp_rate)), 
-              aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
-  geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
+             aes(x = Treatment, y = AvRR, group=Individual), 
+                 color="light gray", 
+                 size = 0.5,
+                 position = position_dodge(width=0.2)) + 
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+              mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+              filter(Species %in% c("GRPE", "MEFE")) %>%
+              group_by(Species,
+                       Treatment, 
+                       Individual) %>%
+              summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Olfactory"),
+            aes(y = AvRR), 
+            color="dodgerblue", 
+            position = position_dodge(width=0.2)) + 
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
                filter(Species %in% c("GRPE", "MEFE")) %>%
-               group_by(Species, 
-                        Treatment) %>%
-               summarise(AvRR = mean(resp_rate)), 
-             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 1.1) +
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Baseline"),
+             aes(y = AvRR), 
+             color="darkgreen", 
+             position = position_dodge(width=0.2)) +
+  geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+               filter(Species %in% c("GRPE", "MEFE")) %>%
+               group_by(Species,
+                        Treatment, 
+                        Individual) %>%
+               summarise(AvRR = mean(resp_rate)) %>%
+               filter(Treatment == "Visual+Olfactory"),
+             aes(y = AvRR), 
+             color= "darkorange", 
+             position = position_dodge(width=0.2)) +
+  
+  geom_half_violin(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                     filter(Species %in% c("GRPE", "MEFE")) %>%
+                     group_by(Species,
+                              Treatment, 
+                              Individual) %>%
+                     summarise(AvRR = mean(resp_rate)) %>%
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "GRPE"),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.3), 
+                   side = "l", fill = 'dodgerblue') +
+  ##### this breaks with error "no non-missing arguments to max, returning -Inf & computation failed, replacement has 1 row, data has 0
+  
+  geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
+                     mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                     filter(Species %in% c("GRPE", "MEFE")) %>%
+                     group_by(Species,
+                              Treatment, 
+                              Individual) %>%
+                     summarise(AvRR = mean(resp_rate)) %>%
+                     filter(Treatment == "Visual+Olfactory") %>%
+                     filter(Species == "GRPE"),
+                   aes(x = Treatment, y = AvRR), 
+                   position = position_nudge(x = -.3), 
+                   side = "l", fill = 'dodgerblue') + 
+  ##### this returns multiple boxplots as single points
+  
   theme_classic() +
   labs(y = "Respiration rate (uL CO2 g-1 min-1)", x = "Predator Cue") +
   facet_grid(.~Species)

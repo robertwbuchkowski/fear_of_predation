@@ -1,0 +1,19 @@
+Date & time of file creation	7/16/2019 09:02																																																									
+Data file path	C:\Users\yaa23\Desktop\Resp\20190716_PredatorExp_acc.txt																																																									
+Raw data file path	C:\Users\yaa23\Desktop\Resp\20190716_PredatorExp_acc_raw.txt																																																									
+																																																										
+																																																										
+Parameter/Chamber	Wet weight [g]	Resp. volume [mL]	Fish length [cm]	Fractional error [%]	Chamber notes																																																					
+Chamber 1	0.196	16.943	10		22																																																					
+Chamber 2	0.282	16.65800000000000			23																																																					
+Chamber 3	0.245	16.974			24																																																					
+Chamber 4	0.234	16.97			25																																																					
+Chamber 6	0.309	16.587			26																																																					
+Chamber 7	0.214	16.732			27																																																					
+Chamber 8	0.248	16.82900000000000			28																																																					
+																																																										
+																																																										
+Date &Time [DD-MM-YYYY/HH:MM:SS]	Time [sec]	Loop	Phase time [s]	CH 1 MO2 [mgO2/kg/hr]	CH 1 slope [%air sat./hr]	CH 1 R^2	CH 1 max O2 [%air sat.]	CH 1 min O2 [%air sat.]	CH 1 avg O2 [%air sat.]	CH 1 avg temp [°C]	CH 2 MO2 [mgO2/kg/hr]	CH 2 slope [%air sat./hr]	CH 2 R^2	CH 2 max O2 [%air sat.]	CH 2 min O2 [%air sat.]	CH 2 avg O2 [%air sat.]	CH 2 avg temp [°C]	CH 3 MO2 [mgO2/kg/hr]	CH 3 slope [%air sat./hr]	CH 3 R^2	CH 3 max O2 [%air sat.]	CH 3 min O2 [%air sat.]	CH 3 avg O2 [%air sat.]	CH 3 avg temp [°C]	CH 4 MO2 [mgO2/kg/hr]	CH 4 slope [%air sat./hr]	CH 4 R^2	CH 4 max O2 [%air sat.]	CH 4 min O2 [%air sat.]	CH 4 avg O2 [%air sat.]	CH 4 avg temp [°C]	CH 6 MO2 [mgO2/kg/hr]	CH 6 slope [%air sat./hr]	CH 6 R^2	CH 6 max O2 [%air sat.]	CH 6 min O2 [%air sat.]	CH 6 avg O2 [%air sat.]	CH 6 avg temp [°C]	CH 7 MO2 [mgO2/kg/hr]	CH 7 slope [%air sat./hr]	CH 7 R^2	CH 7 max O2 [%air sat.]	CH 7 min O2 [%air sat.]	CH 7 avg O2 [%air sat.]	CH 7 avg temp [°C]	CH 8 MO2 [mgO2/kg/hr]	CH 8 slope [%air sat./hr]	CH 8 R^2	CH 8 max O2 [%air sat.]	CH 8 min O2 [%air sat.]	CH 8 avg O2 [%air sat.]	CH 8 avg temp [°C]	AMB temp N°1 avg temp [°C]	AMB temp N°1 setpoint [°C]	AMB temp N°1 hysteresis [°C]	AMB temp N°2 avg temp [°C]	AMB temp N°2 setpoint [°C]	AMB temp N°2 hysteresis [°C]
+7/16/2019/09:24:04	1279	1	F650/W30/M600	72.5	-8.416	0.876	100.73	99.16	100.04	18.27	130.2	-22.811	0.981	101.61	97.37	99.24	18.27	55.5	-8.013	0.844	100.97	99.34	100.30	18.27	57.7	-7.958	0.956	100.93	99.19	100.07	18.27	-53.6	11.117	0.504	94.92	91.57	93.86	18.11	143.9	-18.683	0.970	98.84	95.38	97.18	18.11	85.4	-12.558	0.906	100.12	97.55	99.07	18.11	18.25	20.00	0.10	18.08	20.00	0.10
+7/16/2019/09:45:24	2559	2	F650/W30/M600	64.8	-7.539	0.917	100.00	98.37	99.26	18.35	134.0	-23.575	0.939	100.36	95.35	97.66	18.35	84.6	-12.520	0.957	100.70	98.60	99.70	18.35	108.8	-15.463	0.959	100.65	97.88	99.25	18.35	-70.5	14.319	0.566	91.02	87.72	89.93	18.20	182.0	-23.985	0.962	98.21	93.51	95.64	18.20	128.7	-19.426	0.983	100.00	96.40	98.10	18.20	18.33	20.00	0.10	18.18	20.00	0.10
+7/16/2019/10:06:44	3839	3	F650/W30/M600	83.4	-9.902	0.929	99.64	97.78	98.91	18.40	162.3	-28.748	0.981	99.73	94.10	96.77	18.40	76.6	-11.387	0.975	100.39	98.30	99.29	18.40	96.4	-13.750	0.970	100.23	97.47	98.81	18.40	-47.1	9.609	0.628	87.93	85.54	87.00	18.27	204.9	-27.216	0.958	97.99	92.75	94.69	18.27	134.7	-20.499	0.985	100.03	96.20	97.94	18.27	18.39	20.00	0.10	18.25	20.00	0.10

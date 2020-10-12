@@ -1052,11 +1052,11 @@ RespSumPlot1 <- function(RespSum){
 # CLEANING OF AQUATIC DATA BY DATE ----
   ### 11 Jul ----
 # Define the run of interest:
-Pre <- RespDataPrep("20190711_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep("20190711_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep("20190711_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190711_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep("20190711_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep("Data/20190711_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep("Data/20190711_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep("Data/20190711_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190711_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep("Data/20190711_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1174,11 +1174,11 @@ write.csv(Final, "Jul11.csv")
  
 ### 12 Jul ----
 # Define the run of interest:
-Pre <- RespDataPrep(  "20190712_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190712_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190712_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190712_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190712_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep("Data/20190712_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep("Data/20190712_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep("Data/20190712_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190712_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep("Data/20190712_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1289,11 +1289,11 @@ summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
 write.csv(Final, "Jul12.csv")
  
  ### 15 Jul ----
-Pre <- RespDataPrep(  "20190715_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190715_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190715_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190715_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190715_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep("Data/20190715_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep("Data/20190715_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep("Data/20190715_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190715_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep("Data/20190715_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1399,11 +1399,11 @@ summary(lm(corO2.mg_h.g ~ Type * as.factor(CH), data = Final))
 write.csv(Final, "Jul15.csv")
  
 ### 16 Jul ----
-Pre <- RespDataPrep(  "20190716_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190716_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190716_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190716_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190716_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep("Data/20190716_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep("Data/20190716_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep("Data/20190716_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190716_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep("Data/20190716_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1511,11 +1511,11 @@ write.csv(Final, "Jul16.csv")
  
  ### 17 Jul ----
 # Define the run of interest:
-Pre <- RespDataPrep(  "20190717_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190717_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190717_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190717_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190717_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep("Data/20190717_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep("Data/20190717_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep("Data/20190717_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190717_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "Data/20190717_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1625,11 +1625,11 @@ write.csv(Final, "Jul17.csv")
  ### 18 Jul ----
 
 # Define the run of interest:
-Pre <- RespDataPrep(  "20190718_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190718_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190718_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190718_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190718_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep(  "Data/20190718_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "Data/20190718_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "Data/20190718_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190718_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "Data/20190718_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1739,11 +1739,11 @@ write.csv(Final, "Jul18.csv")
  
  ### 19 Jul ----
 # Define the run of interest:
-Pre <- RespDataPrep(  "20190719_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190719_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190719_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190719_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190719_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep(  "Data/20190719_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "Data/20190719_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "Data/20190719_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190719_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "Data/20190719_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1858,11 +1858,11 @@ write.csv(Final, "Jul19.csv")
  
 ### 22 Jul ----
 # Define the run of interest:
-Pre <- RespDataPrep(  "20190722_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190722_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190722_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190722_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190722_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep(  "Data/20190722_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "Data/20190722_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "Data/20190722_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190722_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "Data/20190722_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes
@@ -1971,11 +1971,11 @@ write.csv(Final, "Jul22.csv")
  
 ### 23 Jul ----
 # Define the run of interest:
-Pre <- RespDataPrep(  "20190723_PredatorExp_blankPre_raw.txt")
-Acc <- RespDataPrep(  "20190723_PredatorExp_acc_raw.txt")
-SMR <- RespDataPrep(  "20190723_PredatorExp_smr_None_raw.txt")
-Treat <- RespDataPrep("20190723_PredatorExp_smr_Treat_raw.txt")
-Post <- RespDataPrep( "20190723_PredatorExp_blankPost_raw.txt")
+Pre <- RespDataPrep(  "Data/20190723_PredatorExp_blankPre_raw.txt")
+Acc <- RespDataPrep(  "Data/20190723_PredatorExp_acc_raw.txt")
+SMR <- RespDataPrep(  "Data/20190723_PredatorExp_smr_None_raw.txt")
+Treat <- RespDataPrep("Data/20190723_PredatorExp_smr_Treat_raw.txt")
+Post <- RespDataPrep( "Data/20190723_PredatorExp_blankPost_raw.txt")
 
 RespPrepPlot1(Pre) # Quality control for raw data
 RespPrepPlot2(Pre) # Quality control for all slopes

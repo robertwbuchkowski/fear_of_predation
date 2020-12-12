@@ -2260,33 +2260,33 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
    # BASELINE
     geom_point(data = X2.2 %>% 
                 filter(Tx == "Baseline"),
-              aes(), size = 1, col = "darkgreen") +
+              aes(), size = 2, col = "darkgreen") +
    geom_half_boxplot(data = X2.2 %>% 
                      filter(Tx == "Baseline"),
                      aes(y=MO2), 
-                     position = position_nudge(x = -.4),
+                     position = position_nudge(x = -.6),
                      outlier.shape = NA, 
                      center = TRUE, errorbar.draw = FALSE, width = .2,
                      fill = 'darkgreen', alpha = 0.6) +
 
    # OLFACTORY
    geom_point(data = X2.2 %>% filter(Tx == "Olfactory"),
-              aes(), size = 1, col = "dodgerblue") +
+              aes(), size = 2, col = "dodgerblue") +
    geom_half_boxplot(data = X2.2 %>% 
                        filter(Tx == "Olfactory"),
                      aes(y=MO2), 
-                     position = position_nudge(x = -1.25),
+                     position = position_nudge(x = -1.42),
                      outlier.shape = NA, 
                      center = TRUE, errorbar.draw = FALSE, width = .2,
                      fill = 'dodgerblue', alpha = 0.6) +
    
    # OLFACTORY+VISUAL
    geom_point(data = X2.2 %>% filter(Tx == "Olfactory+Visual"),
-              aes(), size = 1, col = "darkorange") +
+              aes(), size = 2, col = "darkorange") +
    geom_half_boxplot(data = X2.2 %>% 
                        filter(Tx == "Olfactory+Visual"),
                      aes(y=MO2), 
-                     position = position_nudge(x = -2.1),
+                     position = position_nudge(x = -2.25),
                      outlier.shape = NA, 
                      center = TRUE, errorbar.draw = FALSE, width = .2,
                      fill = 'darkorange', alpha = 0.6) +
@@ -2300,7 +2300,7 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
                aes(x = Tx, y = MO2, group = 1), 
                col = "black", size = 2) +
     
-   coord_cartesian(xlim = c(3.75,.75)) +
+   coord_cartesian(xlim = c(3,.75)) +
     theme_classic() +
     labs(y = "Metabolic rate (O2 * water volume mL /g)", x = "Predator Cue")
  

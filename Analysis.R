@@ -167,7 +167,7 @@ runeach = function(XX = 1, IDTABLE = IDtable, RESPDATA = respdata){
   m1 = lm(CO2 ~ Time, data=selected)
   slope = coefficients(m1)[2]
   r2 = summary(m1)$adj.r.squared
-  TEMP=mean(selected$Temp)
+  TEMP = mean(selected$Temp)
   Weight = as.numeric(IDTABLE[XX,"WWt"])
   WEIGHT = ifelse(is.na(Weight), 1, Weight)
   WEIGHT0 = ifelse(is.na(Weight), 0, Weight)
@@ -255,6 +255,30 @@ fdata %>% filter(Species == "TRRA") %>%
   ggplot(aes(x=resp_rate, y = r2, color = Individual)) + geom_point() # one outlier
 
 # Even with low R2 on CO2 accumulation, we have no reason to believe these were not real measurements.
+
+### Calculate the average temperature variance and sd during trials ---
+
+MM = dim(IDtable)[1]
+
+tempparse = function(XX = 1, 
+                     IDTABLE = IDtable, 
+                     RESPDATA = respdata %>% select(Time, Temp, Julian)){ 
+  select = RESPDATA$Time > as.numeric(IDTABLE[XX,"Start"]) & 
+      RESPDATA$Time < as.numeric(IDTABLE[XX,"End"]) &
+      RESPDATA$Julian == as.numeric(IDTABLE[XX, "Julian"])
+  
+  selected = RESPDATA[select,]
+  
+  tempvar = var(selected$Temp)
+  tempsd = sd(selected$Temp)
+    
+  c(tempvar = tempvar, tempsd = tempsd)
+}
+
+tempparsed = cbind(IDtable, t(sapply(seq(1, MM, 1), FUN = tempparse)))
+tempparsed = tempparsed %>% filter(!WWt == "NA") # remove blanks
+mean(tempparsed$tempvar)
+mean(tempparsed$tempsd)
 
 ### ANALYSIS ####
 
@@ -2289,8 +2313,8 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
                      position = position_nudge(x = -2.25),
                      outlier.shape = NA, 
                      center = TRUE, errorbar.draw = FALSE, width = .2,
-                     fill = 'darkorange', alpha = 0.6) +
-   
+                     fill = 'darkorange', alpha = 0.6) + 
+
    # MEAN OVERLAY
    geom_line(data = X2.3 %>% mutate(Tx = recode(Tx, SMR = "Baseline")),
              aes(x = Tx, y = MO2, group = 1), 

@@ -2264,6 +2264,7 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
  r.squaredGLMM(mod1)
  
  ## FIGURE ====
+ require(gghalves)
  
  X2.2 <- X2 %>% 
    mutate(fit.re = predict(mod1, re.form = NULL)) %>% 
@@ -2314,7 +2315,15 @@ X <- X %>% filter(RMSE.dif < RMSE.dif.threshold & MO2 > 0) # We remove all of th
                      outlier.shape = NA, 
                      center = TRUE, errorbar.draw = FALSE, width = .2,
                      fill = 'darkorange', alpha = 0.6) + 
-
+   
+   
+   # GROUP REPEATED MEASURES OVERLAY
+   geom_line(data = X2.2,
+            aes(x = Tx, y = MO2, group=Resp.DOY),
+            color = "light gray",
+            linetype = "dashed",
+            size = 0.5) + 
+   
    # MEAN OVERLAY
    geom_line(data = X2.3 %>% mutate(Tx = recode(Tx, SMR = "Baseline")),
              aes(x = Tx, y = MO2, group = 1), 

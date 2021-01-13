@@ -323,6 +323,7 @@ TRRAdf$Treatment <- factor(TRRAdf$Treatment,
                            levels = c("Baseline", "Olfactory", "Visual+Olfactory"))
 
 ### Fit models by species ----
+# Note bootstrapping may take a bit
 
 # CRICKETS #
 cricketm1 = lmer(resp_rate~Treatment + (1|Individual), data=cricketdf)
@@ -379,29 +380,7 @@ TRRAm1.ci <- model_parameters(TRRAm1, ci = 0.95, bootstrap = TRUE, iterations = 
 TRRAm1.ci
 
 ### Cleaning II: Does removing low r2 and negative respiration change results? ---- 
-  # From plots above, look at PHID, ONAS, lynx
-
-PHIDdf2 = fdata %>% filter(Species == "Phiddipus") %>% 
-  filter(!resp_rate < 0 & !r2 < .25)
-PHIDm2 = lmer(resp_rate~Treatment + (1|Individual), data = PHIDdf2)
-plot(PHIDm2)
-summary(PHIDm2)
-PHIDm2.ci <- model_parameters(PHIDm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
-r.squaredGLMM(PHIDm2)
-# Comparision - no real differences. Remove these points.
-PHIDm2.ci
-PHIDm1.ci
-
-ONASdf2 = fdata %>% filter(Species == "ONAS") %>%
-  filter(!resp_rate < 0 & !r2 <.25)
-ONASm2 = lmer(resp_rate~Treatment + (1|Individual), data = ONASdf2)
-plot(ONASm2)
-summary(ONASm2)
-ONASm2.ci <- model_parameters(ONASm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
-r.squaredGLMM(ONASm2)
-# Comparison - no real differences. Remove these points
-ONASm2.ci
-ONASm1.ci
+  # From plots above, look at lynx
 
 lynxdf2 = fdata %>% filter(Species == "Lynx") %>%
   filter(!resp_rate < 0 & !r2 <.25)
@@ -410,7 +389,7 @@ plot(lynxm2)
 summary(lynxm2)
 lynxm2.ci <- model_parameters(lynxm2, ci = 0.95, bootstrap = TRUE, iterations = 1000)
 r.squaredGLMM(lynxm2)
-# Comparison - no real differences. Remove these points
+# Comparison - no real differences
 lynxm2.ci
 lynxm1.ci
 
@@ -2111,7 +2090,6 @@ write.csv(Final, "Jul23.csv")
  ### Last update 2020 1 Sep by N.R. Sommer
  
 require(lme4)
-require(lmerTest)
 require(tidyverse)
 theme_set(theme_minimal())
  
@@ -2128,7 +2106,7 @@ theme_set(theme_minimal())
  X <- rbind(Jul11, Jul12, Jul15, Jul16, Jul17, Jul18, Jul19, Jul22, Jul23)
  # Bind the clean data into one master file
  
- ## Analyse and correct for temperature ====
+ ## Analyze and correct for temperature ====
  
  X %>% group_by(Type, Resp.DOY, CH) %>% 
    summarise(Temp.C = mean(Temp.C)) %>% 
@@ -2190,7 +2168,7 @@ write.csv(X, "masterData_PredResp.csv")
 # Master data with assignment of treatment condition (Ex= DF or CUE) and MO2 adjusted for temperature
  
 ### ANALYSIS ----
-require(lmer)
+require(lme4)
 require(parameters)
 require(tidyverse)
 require(MuMIn)

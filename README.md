@@ -1,7 +1,7 @@
 Title: Intensity-of-risk interacts with functional types to predict prey metabolic responses to predators
 Authors: NR Sommer*, Y Alshwairikh, AZ Andis Arietta, RW Buchkowski
 
-* Corresponding author email address: nathaliersommer@gmail.com
+*Corresponding author email address: nathaliersommer@gmail.com
 
 Data collected: Jun - Sept 2019
 

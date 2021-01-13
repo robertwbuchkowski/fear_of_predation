@@ -4,11 +4,7 @@ Authors: NR Sommer*, Y Alshwairikh, AZ Andis Arietta, RW Buchkowski
 
 *Corresponding author email address: nathaliersommer@gmail.com
 
-Data collected: Jun - Sept 2019
-
-Summary:
-
-Data on respiratory responses of crickets, grasshoppers, jumping spiders, lynx spiders, isopods, and tadpoles under varying contexts of predation.
+*Summary*: Data on respiratory responses of crickets, grasshoppers, jumping spiders, lynx spiders, isopods, and tadpoles under varying contexts of predation. Data collected between Jun - Sept 2019.
 
 All raw data is contained within the data folder.
 

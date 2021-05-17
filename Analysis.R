@@ -730,8 +730,8 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
 # LYNX & PHID
 fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
   mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-  mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-  filter(Species %in% c("OXSA", "PHspp")) %>%
+  mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+  filter(Species %in% c("OXSA", "Phidippus spp")) %>%
   group_by(Species, 
            Individual, 
            Treatment) %>%
@@ -739,8 +739,8 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   
   geom_line(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-              mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-              filter(Species %in% c("OXSA", "PHspp")) %>%
+              mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+              filter(Species %in% c("OXSA", "Phidippus spp")) %>%
               group_by(Species,
                        Treatment, 
                        Individual) %>%
@@ -751,9 +751,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
             position = position_dodge(width=0.2)) + 
   
   geom_point(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-               filter(Species %in% c("OXSA", "PHspp")) %>%
+               mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+               filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -763,9 +763,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
              color="dodgerblue", 
              position = position_dodge(width=0.2)) + 
   geom_point(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-               filter(Species %in% c("OXSA", "PHspp")) %>%
+               mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+               filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -775,9 +775,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
              color="darkgreen", 
              position = position_dodge(width=0.2)) +
   geom_point(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-               filter(Species %in% c("OXSA", "PHspp")) %>%
+               mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+               filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -790,9 +790,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   # OXSA VISUAL + OLFACTORY
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                      mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
                       filter(Treatment == "Visual+Olfactory") %>%
-                      filter(Species == "OXSA") %>%
+                      filter(Species == "Oxyopes salticus") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -806,9 +806,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   # OXSA OLFACTORY
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                      mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
                       filter(Treatment == "Olfactory") %>%
-                      filter(Species == "OXSA") %>%
+                      filter(Species == "Oxyopes salticus") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -822,9 +822,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   # OXSA BASELINE
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+                      mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
                       filter(Treatment == "Olfactory") %>%
-                      filter(Species == "OXSA") %>%
+                      filter(Species == "Oxyopes salticus") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -838,9 +838,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   # PHsp VISUAL + OLFACTORY
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                      mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
                       filter(Treatment == "Visual+Olfactory") %>%
-                      filter(Species == "PHspp") %>%
+                      filter(Species == "Phidippus spp") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -854,9 +854,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   # PHsp OLFACTORY
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                      mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
                       filter(Treatment == "Olfactory") %>%
-                      filter(Species == "PHspp") %>%
+                      filter(Species == "Phidippus spp") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -870,9 +870,9 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   # PHsp BASELINE
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
+                      mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
                       filter(Treatment == "Baseline") %>%
-                      filter(Species == "PHspp") %>%
+                      filter(Species == "Phidippus spp") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -885,17 +885,17 @@ fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>%
   
   # OVERLAY MEANS
   geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
-               mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-               mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-               filter(Species %in% c("OXSA", "PHspp")) %>%
+               mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
+               mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+               filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
                group_by(Species, 
                         Treatment) %>%
                summarise(AvRR = mean(resp_rate)), 
              aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
   geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
-              mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
-              mutate(Species = replace(Species, Species == "Phiddipus", "PHspp")) %>%
-              filter(Species %in% c("OXSA", "PHspp")) %>%
+              mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
+              mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
+              filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
               group_by(Species, 
                        Treatment) %>%
               summarise(AvRR = mean(resp_rate)), 

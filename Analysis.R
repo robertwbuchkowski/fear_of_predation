@@ -2,7 +2,7 @@
 
 #### **TERRESTRIAL** ----
 # Main code by R.W. Buchkowski & N.R. Sommer.
-# Last update 10 Oct 2020 by N.R. Sommer
+# Last update 18 May 2021 by N.R. Sommer
 
 require(tidyverse)
 require(lubridate)
@@ -412,13 +412,15 @@ require("gghalves")
 # MEFE & Crickets
 
 fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
-  mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-  filter(Species %in% c("GRPE", "MEFE")) %>%
+  mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+  mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+  filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
   group_by(Species, Individual, Treatment) %>%
   ggplot(aes(x=Treatment, y=resp_rate)) +
   geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-              mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-              filter(Species %in% c("GRPE", "MEFE")) %>%
+              mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+              mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+              filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
               group_by(Species,
                        Treatment, 
                        Individual) %>%
@@ -428,8 +430,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                  size = 0.5,
                  position = position_dodge(width=0.2)) + 
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-              mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-              filter(Species %in% c("GRPE", "MEFE")) %>%
+              mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+              mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+              filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
               group_by(Species,
                        Treatment, 
                        Individual) %>%
@@ -439,8 +442,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
             color="dodgerblue", 
             position = position_dodge(width=0.2)) + 
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-               filter(Species %in% c("GRPE", "MEFE")) %>%
+               mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+               mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+               filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -450,8 +454,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
              color="darkgreen", 
              position = position_dodge(width=0.2)) +
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-               filter(Species %in% c("GRPE", "MEFE")) %>%
+               mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+               mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+               filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -463,9 +468,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   
   # GRPE VISUAL + OLFACTORY
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
                       filter(Treatment == "Visual+Olfactory") %>%
-                      filter(Species == "GRPE") %>%
+                      filter(Species == "Gryllidae pennsylvanicus") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -478,9 +483,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   
   # GRPE OLFACTORY
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
                       filter(Treatment == "Olfactory") %>%
-                      filter(Species == "GRPE") %>%
+                      filter(Species == "Gryllidae pennsylvanicus") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -493,9 +498,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   
   # GRPE BASELINE
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
                       filter(Treatment == "Baseline") %>%
-                      filter(Species == "GRPE") %>%
+                      filter(Species == "Gryllidae pennsylvanicus") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -509,7 +514,8 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   # MEFE VISUAL + OLFACTORY
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Visual+Olfactory") %>%
-                      filter(Species == "MEFE") %>%
+                      mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+                      filter(Species == "Melanoplus femurrubrum") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -523,7 +529,8 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   # MEFE OLFACTORY
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Olfactory") %>%
-                      filter(Species == "MEFE") %>%
+                      mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+                      filter(Species == "Melanoplus femurrubrum") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -536,9 +543,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   
   # MEFE BASELINE
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
+                      mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
                       filter(Treatment == "Baseline") %>%
-                      filter(Species == "MEFE") %>%
+                      filter(Species == "Melanoplus femurrubrum") %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -551,16 +558,18 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   
   # OVERLAY MEANS
   geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
-              mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-              filter(Species %in% c("GRPE", "MEFE")) %>%
+              mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+              mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+              filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
               group_by(Species, 
                        Treatment) %>%
               summarise(AvRR = mean(resp_rate)), 
             aes(x=Treatment, y = AvRR, group = Species), color = "black", size = .8) +
   
   geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
-               mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
-               filter(Species %in% c("GRPE", "MEFE")) %>%
+               mutate(Species = replace(Species, Species == "Cricket", "Gryllidae pennsylvanicus")) %>%
+               mutate(Species = replace(Species, Species == "MEFE", "Melanoplus femurrubrum")) %>%
+               filter(Species %in% c("Gryllidae pennsylvanicus", "Melanoplus femurrubrum")) %>%
                group_by(Species, 
                         Treatment) %>%
                summarise(AvRR = mean(resp_rate)), 
@@ -574,10 +583,14 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
 # ONAS & TRRA
 fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>% 
   filter(Species %in% c("ONAS", "TRRA")) %>% 
+  mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+  mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
   group_by(Species, Individual, Treatment) %>%
   ggplot(aes(x=Treatment, y=resp_ratel)) +
   geom_line(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
               filter(Species %in% c("ONAS", "TRRA")) %>%
+              mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+              mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
               group_by(Species,
                        Treatment, 
                        Individual) %>%
@@ -589,6 +602,8 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                filter(Species %in% c("ONAS", "TRRA")) %>%
+               mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+               mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -599,6 +614,8 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
              position = position_dodge(width=0.2)) + 
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                filter(Species %in% c("ONAS", "TRRA")) %>%
+               mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+               mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -609,6 +626,8 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
              position = position_dodge(width=0.2)) +
   geom_point(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                filter(Species %in% c("ONAS", "TRRA")) %>%
+               mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+               mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                group_by(Species,
                         Treatment, 
                         Individual) %>%
@@ -622,6 +641,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Visual+Olfactory") %>%
                       filter(Species == "ONAS") %>%
+                      mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -637,6 +657,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Olfactory") %>%
                       filter(Species == "ONAS") %>%
+                      mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -652,6 +673,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Baseline") %>%
                       filter(Species == "ONAS") %>%
+                      mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -667,6 +689,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Visual+Olfactory") %>%
                       filter(Species == "TRRA") %>%
+                      mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -682,6 +705,7 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
                       filter(Treatment == "Olfactory") %>%
                       filter(Species == "TRRA") %>%
+                      mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -695,9 +719,9 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   # TRRA BASELINE
 
   geom_half_boxplot(data = fdata %>% filter(!resp_rate < -1 & !r2 <.25) %>% 
-                      mutate(Species = replace(Species, Species == "Cricket", "GRPE")) %>%
                       filter(Treatment == "Baseline") %>%
                       filter(Species == "TRRA") %>%
+                      mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                       group_by(Species,
                                Individual,
                                Treatment) %>%
@@ -711,12 +735,16 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
   # OVERLAY MEANS
   geom_point(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
                filter(Species %in% c("ONAS", "TRRA")) %>%
+               mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+               mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
                group_by(Species, 
                         Treatment) %>%
                summarise(AvRR = mean(resp_rate)), 
              aes(x=Treatment, y = AvRR, group = Species), color = "black", size = 2) +
   geom_line(data = fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
               filter(Species %in% c("ONAS", "TRRA")) %>%
+              mutate(Species = replace(Species, Species == "ONAS", "Oniscus asellus")) %>%
+              mutate(Species = replace(Species, Species == "TRRA", "Trachelipus rathkii")) %>%
               group_by(Species, 
                        Treatment) %>%
               summarise(AvRR = mean(resp_rate)), 
@@ -729,18 +757,18 @@ fdata %>% filter(!resp_rate < 0 & !r2 <.25) %>%
 
 # LYNX & PHID
 fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-  mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+  mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
   mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
-  filter(Species %in% c("OXSA", "Phidippus spp")) %>%
+  filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
   group_by(Species, 
            Individual, 
            Treatment) %>%
   ggplot(aes(x=Treatment, y=resp_rate)) +
   
   geom_line(data = fdata %>% filter(!resp_rate < -.5 & !r2 <.25) %>% 
-              mutate(Species = replace(Species, Species == "Lynx", "OXSA")) %>%
+              mutate(Species = replace(Species, Species == "Lynx", "Oxyopes salticus")) %>%
               mutate(Species = replace(Species, Species == "Phiddipus", "Phidippus spp")) %>%
-              filter(Species %in% c("OXSA", "Phidippus spp")) %>%
+              filter(Species %in% c("Oxyopes salticus", "Phidippus spp")) %>%
               group_by(Species,
                        Treatment, 
                        Individual) %>%
@@ -2087,7 +2115,7 @@ write.csv(Final, "Jul23.csv")
  
  #### COMPILE ----
  ### Main code written by A. Arietta.
- ### Last update 2020 1 Sep by N.R. Sommer
+ ### Last update 2021 18 May by N.R. Sommer
  
 require(lme4)
 require(tidyverse)

@@ -1,6 +1,6 @@
-__Title: Intensity-of-risk interacts with functional types to predict prey metabolic responses to predators__
+__Title: Prey metabolic responses to predators are dependent on predator hunting mode and prey antipredator defenses__
 
-Authors: NR Sommer*, Y Alshwairikh, AZ Andis Arietta, RW Buchkowski
+Authors: Sommer, N.R., Alshwairikh, Y.A., Andis Arietta, A.Z., Skelly, D. K., Buchkowski, R.W.
 
 *Corresponding author email address: nathaliersommer@gmail.com
 

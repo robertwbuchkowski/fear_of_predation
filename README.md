@@ -8,4 +8,4 @@ Authors: Sommer, N.R., Alshwairikh, Y.A., Andis Arietta, A.Z., Skelly, D. K., Bu
 
 All raw data is contained within the data folder.
 
-All code is contained in Analysis.R
+All code is contained in [Analysis.R](Analysis.R)

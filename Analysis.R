@@ -1,4 +1,4 @@
-# CODE FOR MS: Prey functional types and physiological responses to acute predation risk
+# CODE FOR MS: Prey metabolic responses to predators are dependent on predator hunting mode and prey antipredator defenses
 
 #### **TERRESTRIAL** ----
 # Main code by R.W. Buchkowski & N.R. Sommer.
